@@ -112,28 +112,31 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         appsButton=secondary("Приложения · "+cfg.apps.size(),this::chooseApps);ongoing=check("Включать постоянные уведомления",cfg.ongoing);
 
         section("Получатели · Telegram");tg=check("Telegram",cfg.telegram);
-        token=field("BotToken",cfg.token,true);chat=field("ChatID",cfg.chat,false);
-        note("Сначала отправьте боту /start. Для группы нужен доступ бота к отправке.");
-        tgTestButton=secondary("Отправить тест",()->testChannel(true));tgResult=note(ConnectionTests.telegramStatus);
+        token=field("Токен бота",cfg.token,true);token.setHint("Токен от @BotFather");chat=field("Chat ID",cfg.chat,false);chat.setHint("Числовой ID или @имя_канала");
+        formHelp("Для личного чата отправьте боту /start. В группе или канале разрешите боту отправлять сообщения.");
+        tgTestButton=secondary("Отправить тест",()->testChannel(true));tgResult=formHelp(ConnectionTests.telegramStatus);
 
         section("Email / SMTP");email=check("Email / SMTP",cfg.email);
         
-        pair(()->host=field("SMTP сервер",cfg.host,false),()->{port=field("Порт",String.valueOf(cfg.port),false);port.setInputType(InputType.TYPE_CLASS_NUMBER);},2,1);
-        note("Шифрование");tls=segments(new String[]{"STARTTLS","SSL"},cfg.tls);
-        note("Авторизация");auth=segments(new String[]{"AUTO","LOGIN","PLAIN","NONE"},cfg.auth);
-        user=field("SMTP логин",cfg.user,false);password=field("Пароль SMTP",cfg.password,true);
+        pair(()->{host=field("SMTP сервер",cfg.host,false);host.setHint("smtp.example.com");},()->{port=field("Порт",String.valueOf(cfg.port),false);port.setInputType(InputType.TYPE_CLASS_NUMBER);},2,1);
+        formLabel("Шифрование");tls=segments(new String[]{"STARTTLS","SSL"},cfg.tls);formHelp("STARTTLS обычно использует порт 587, SSL — 465. Уточните параметры у почтового провайдера.");
+        formLabel("Авторизация");auth=segments(new String[]{"AUTO","LOGIN","PLAIN","NONE"},cfg.auth);formHelp("AUTO выбирает способ входа автоматически. NONE — отправка без авторизации.");
+        user=field("SMTP логин",cfg.user,false);password=field("Пароль SMTP",cfg.password,true);formHelp("Используйте пароль приложения, если этого требует почтовый провайдер.");
         
-        from=field("Email отправителя",cfg.from,false);from.setHint("Пусто — SMTP логин");to=field("Email получателя",cfg.to,false);
+        from=field("Email отправителя",cfg.from,false);from.setHint("sender@example.com");formHelp("Если адрес пуст, будет использован SMTP-логин.");to=field("Email получателя",cfg.to,false);to.setHint("recipient@example.com");formHelp("Несколько адресов — через запятую или точку с запятой.");
         
         secondary("Помощь по SMTP",()->new AlertDialog.Builder(this).setTitle("Настройка SMTP").setMessage("STARTTLS обычно использует порт 587, SSL — 465. Уточняйте настройки у провайдера. AUTO выбирает LOGIN/PLAIN. NONE в авторизации — relay без входа; защищённое TLS-соединение обязательно. Принятие сервером не гарантирует попадание во Входящие — проверьте Спам.").setPositiveButton("Понятно",null).show());
         pair(()->secondary("Лог SMTP",this::showSmtpLog),()->secondary("Копировать лог",this::copySmtpLog),1,1);
-        mailTestButton=secondary("Тестовое письмо",()->testChannel(false));mailResult=note(ConnectionTests.emailStatus);
+        mailTestButton=secondary("Тестовое письмо",()->testChannel(false));mailResult=formHelp(ConnectionTests.emailStatus);
 
-        section("Формат сообщений");note("Один шаблон для SMS, звонков и уведомлений в Telegram и SMTP.");
-        templateField=new EditText(this);templateField.setId(viewId++);templateField.setText(cfg.messageTemplate);templateField.setTextSize(14);templateField.setTextColor(UiColors.TEXT);UiLayout.background(templateField,border(UiColors.FIELD));templateField.setPadding(dp(12),dp(10),dp(12),dp(10));templateField.setGravity(Gravity.TOP|Gravity.START);templateField.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);templateField.setMinLines(4);templateField.setMaxLines(8);templateField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4000)});area.addView(templateField,new LinearLayout.LayoutParams(-1,-2));
+        section("Формат сообщений");formHelp("Общий шаблон для SMS, звонков и уведомлений в Telegram и на почту.");formLabel("Текст сообщения");
+        templateField=new EditText(this);templateField.setId(viewId++);templateField.setText(cfg.messageTemplate);templateField.setTextSize(14);templateField.setIncludeFontPadding(false);templateField.setTextColor(UiColors.TEXT);UiLayout.background(templateField,border(UiColors.FIELD));templateField.setPadding(dp(12),dp(10),dp(12),dp(10));templateField.setGravity(Gravity.TOP|Gravity.START);templateField.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);templateField.setMinLines(4);templateField.setMaxLines(8);templateField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4000)});area.addView(templateField,new LinearLayout.LayoutParams(-1,-2));
+        formHelp("Переносы строк сохраняются. Изменения применятся к новым событиям после сохранения.");
         pair(()->secondary("Предпросмотр",this::previewTemplate),()->secondary("По умолчанию",()->templateField.setText(MessageTemplate.DEFAULT)),1,1);
+        formLabel("Добавить переменную");
         LinearLayout parent=area;LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.VERTICAL);parent.addView(chips);String[] variables={"time","date","type","data","title","message","number","sim","app","package"};
         for(int row=0;row<(variables.length+1)/2;row++){LinearLayout line=new LinearLayout(this);line.setBaselineAligned(false);chips.addView(line,new LinearLayout.LayoutParams(-1,-2));for(int j=row*2;j<Math.min(variables.length,row*2+2);j++){String value="{{"+variables[j]+"}}";TextView chip=new TextView(this);chip.setText(value);chip.setTextColor(UiColors.TEXT);chip.setTextSize(12);chip.setIncludeFontPadding(false);chip.setGravity(Gravity.CENTER);chip.setTypeface(Typeface.MONOSPACE);chip.setPadding(dp(8),dp(8),dp(8),dp(8));chip.setMinHeight(dp(40));UiLayout.background(chip,border(UiColors.SUCCESS_BG));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);if(j%2==0)lp.rightMargin=dp(6);lp.topMargin=dp(6);line.addView(chip,lp);chip.setOnClickListener(v->{int start=Math.max(0,templateField.getSelectionStart()),end=Math.max(start,templateField.getSelectionEnd());templateField.getText().replace(start,end,value);});}}
+        formHelp("Нажмите переменную, чтобы вставить её в позицию курсора.");
         secondary("Справка по переменным",this::templateHelp);
         section(" ");button("Сохранить настройки",()->save(false));
     }
@@ -460,7 +463,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void title(String text,int size){TextView label=note(text);label.setIncludeFontPadding(false);label.setTextSize(size);label.setTextColor(UiColors.TEXT);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,0,0,dp(4));}
     private void section(String caption){
-        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setTextSize(11);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
+        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setTextSize(11);if(sectionTab==1&&!caption.equals("Источники"))heading.setTextColor(UiColors.TEXT);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(14),dp(16),dp(14));UiLayout.background(card,border(UiColors.SURFACE));page.addView(card,new LinearLayout.LayoutParams(-1,-2));sections.add(heading);sectionTabs.add(sectionTab);sections.add(card);sectionTabs.add(sectionTab);area=card;
     }
     private void selectTab(int tab){
@@ -470,6 +473,8 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         scroll.smoothScrollTo(0,0);if(tab==3&&history!=null)history.refresh();
     }
     private GradientDrawable border(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(16));d.setStroke(dp(1),UiColors.BORDER);return d;}
+    private TextView formLabel(String text){TextView label=note(text);label.setTextColor(UiColors.TEXT);label.setTextSize(12);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,dp(10),0,dp(6));return label;}
+    private TextView formHelp(String text){TextView hint=note(text);hint.setTextColor(UiColors.TEXT);hint.setTextSize(11);hint.setLineSpacing(dp(2),1);hint.setPadding(0,dp(4),0,dp(10));return hint;}
     private TextView note(String text){TextView t=new TextView(this);t.setIncludeFontPadding(false);t.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.MUTED);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t);return t;}
     private CompoundButton check(String text,boolean value){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(56));row.setPadding(0,dp(8),0,dp(8));area.addView(row,new LinearLayout.LayoutParams(-1,-2));
@@ -489,12 +494,12 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private Spinner segments(String[] values,String selected){
         Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));int pos=Arrays.asList(values).indexOf(selected);spinner.setSelection(Math.max(0,pos));spinner.setVisibility(View.GONE);area.addView(spinner);
         LinearLayout row=new LinearLayout(this);row.setPadding(dp(3),dp(3),dp(3),dp(3));UiLayout.background(row,border(UiColors.FIELD));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(10);area.addView(row,lp);
-        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.TEXT:UiColors.MUTED);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
+        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(UiColors.TEXT);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
         for(int k=0;k<values.length;k++){final int index=k;Button button=new Button(this);button.setText(values[k]);button.setTextSize(11);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setAllCaps(false);button.setPadding(0,0,0,0);button.setMinWidth(0);button.setMinimumWidth(0);row.addView(button,new LinearLayout.LayoutParams(0,-1,1));button.setOnClickListener(v->{spinner.setSelection(index);paint.run();});}paint.run();return spinner;
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
     private EditText field(String label,String value,boolean secret){
-        note(label).setTextSize(12);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.MUTED);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.TEXT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         if(secret){input.setTransformationMethod(PasswordTransformationMethod.getInstance());input.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);input.setSaveEnabled(false);}
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);area.addView(input,lp);return input;
     }

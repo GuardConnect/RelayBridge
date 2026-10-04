@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'ru.eyeone.relaybridge'
     compileSdk 36
-    defaultConfig { applicationId 'ru.eyeone.relaybridge'; minSdk 35; targetSdk 36; versionCode 24; versionName '2.7'; testInstrumentationRunner 'ru.eyeone.relaybridge.SmokeInstrumentation' }
+    defaultConfig { applicationId 'ru.eyeone.relaybridge'; minSdk 35; targetSdk 36; versionCode 25; versionName '2.8'; testInstrumentationRunner 'ru.eyeone.relaybridge.SmokeInstrumentation' }
     // CI may explicitly restrict any future JNI dependencies to ARMv8.
     def relayAbi = providers.gradleProperty('relayAbi').orNull
     if (relayAbi != null) {
