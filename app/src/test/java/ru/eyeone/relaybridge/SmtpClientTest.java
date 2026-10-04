@@ -47,6 +47,12 @@ public class SmtpClientTest {
         c.auth="PLAIN";c.password=" abcd\u00a0efgh\u202fijkl\tmnop ";assertEquals("abcdefghijklmnop",SmtpClient.passwordForAuth(c));
         c.host="SMTP.GOOGLEMAIL.COM";c.password="abcdefghijklmnop";assertEquals(c.password,SmtpClient.passwordForAuth(c));
     }
+    @Test public void gmailUnicodeAndInvisibleDisplaySeparatorsAreRemoved(){
+        Config c=new Config();c.host="smtp.gmail.com";c.password="\uFEFFabcd\u2007efgh\u2009ijkl\u200Bmnop\u3000";
+        assertEquals("abcdefghijklmnop",SmtpClient.passwordForAuth(c));
+        c.password="abcd efgh ijkl mno";assertEquals(c.password,SmtpClient.passwordForAuth(c));
+        c.host="smtp.mail.selcloud.ru";c.password="fixture key with spaces ";assertEquals(c.password,SmtpClient.passwordForAuth(c));
+    }
     @Test public void passwordsOfOtherServersAndNonAppPasswordsAreNotAltered(){
         Config c=new Config();c.host="smtp.example.com";c.password="abcd efgh ijkl mnop";assertEquals(c.password,SmtpClient.passwordForAuth(c));
         c.host="smtp.gmail.com";c.password="short password";assertEquals(c.password,SmtpClient.passwordForAuth(c));

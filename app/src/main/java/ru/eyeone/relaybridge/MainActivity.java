@@ -126,7 +126,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         pair(()->{host=field("SMTP сервер",cfg.host,false);host.setHint("smtp.example.com");},()->{port=field("Порт",String.valueOf(cfg.port),false);port.setInputType(InputType.TYPE_CLASS_NUMBER);},2,1);
         formLabel("Шифрование");tls=segments(new String[]{"STARTTLS","SSL"},cfg.tls);formHelp("STARTTLS обычно использует порт 587, SSL — 465. Уточните параметры у почтового провайдера.");
         formLabel("Авторизация");auth=segments(new String[]{"AUTO","LOGIN","PLAIN","NONE"},cfg.auth);formHelp("AUTO выбирает способ входа автоматически. NONE — отправка без авторизации.");
-        user=field("SMTP логин",cfg.user,false);password=field("Пароль SMTP",cfg.password,true);formHelp("Используйте пароль приложения. Для Gmail пробелы между группами 16-значного пароля удаляются при отправке.");
+        user=field("SMTP логин",cfg.user,false);password=field("Пароль SMTP",cfg.password,true);formHelp("Используйте пароль приложения. Для Gmail можно вставить пароль приложения с пробелами: пробелы и невидимые разделители удаляются при отправке, если остаётся 16 символов.");
         
         from=field("Email отправителя",cfg.from,false);from.setHint("sender@example.com");formHelp("Если адрес пуст, будет использован SMTP-логин.");to=field("Email получателя",cfg.to,false);to.setHint("recipient@example.com");formHelp("Несколько адресов — через запятую или точку с запятой.");
         

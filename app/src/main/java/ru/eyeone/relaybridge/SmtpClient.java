@@ -14,6 +14,7 @@ final class SmtpClient {
     private InputStream input;
     private OutputStream output;
     private String stage="TCP";
+    private String serverHost="";
     private boolean secure;
     private final Consumer<String> trace;
     private final SSLSocketFactory factory;
@@ -35,6 +36,7 @@ final class SmtpClient {
         trace.accept("TLS: "+ssl.getSession().getProtocol()+" / "+ssl.getSession().getCipherSuite()+"; сертификат подтверждён");
     }
     private void deliver(Config c,String kind,String body,String id) throws Exception {
+        serverHost=c.host;
         socket=new Socket();ScheduledFuture<?> deadline=deadlines.schedule(()->{try{socket.close();}catch(Exception ignored){}},120,TimeUnit.SECONDS);
         boolean accepted=false;
         try {
@@ -92,7 +94,7 @@ final class SmtpClient {
     }
     static String passwordForAuth(Config c){
         if(!c.host.equalsIgnoreCase("smtp.gmail.com")&&!c.host.equalsIgnoreCase("smtp.googlemail.com"))return c.password;
-        String compact=c.password.replaceAll("[\\s\\u00A0\\u202F]+","");
+        String compact=c.password.replaceAll("[\\s\\p{Zs}\\u200B\\uFEFF]+","");
         return compact.matches("[A-Za-z0-9]{16}")?compact:c.password;
     }
     private void command(String wire,String visible) throws IOException {
@@ -117,7 +119,7 @@ final class SmtpClient {
     private void expect(Reply response,int...allowed) throws Senders.SendError {
         for(int code:allowed)if(code==response.code)return;
         String numeric=response.code+enhanced(String.join(" ",response.lines));
-        String hint=stage.startsWith("AUTH")?SmtpDiagnostics.auth(numeric):"SMTP "+numeric+": команда отклонена сервером";
+        String hint=stage.startsWith("AUTH")?SmtpDiagnostics.auth(numeric,serverHost,String.join(" ",response.lines)):"SMTP "+numeric+": команда отклонена сервером";
         throw new Senders.SendError(response.code/100==4,stage+": "+hint);
     }
     private static String enhanced(String line){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?<![0-9])([245]\\.[0-9]{1,3}\\.[0-9]{1,3})(?![0-9.])").matcher(line);return m.find()?" / "+m.group(1):"";}
