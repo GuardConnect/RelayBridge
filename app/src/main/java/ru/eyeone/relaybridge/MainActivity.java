@@ -106,9 +106,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void buildChannels(){
         sectionTab=1;section("Источники");sms=check("Входящие SMS",cfg.sms);
-        secondary("SIM для SMS",this::chooseSims);simList=simStatus();updateSimSummary();
+        button("SIM для SMS",this::chooseSims);simList=simStatus();updateSimSummary();
         divider();calls=check("Входящие звонки",cfg.calls);
-        secondary("SIM для звонков",()->chooseSims(true));callSimList=simStatus();updateSimSummary();
+        button("SIM для звонков",()->chooseSims(true));callSimList=simStatus();updateSimSummary();
         divider();pushes=check("Уведомления",cfg.pushes);
         
         appsButton=button("Выберите приложения из списка установленных",this::chooseApps);
