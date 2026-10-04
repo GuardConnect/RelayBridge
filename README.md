@@ -1,6 +1,8 @@
 # RelayBridge
 ## APK в GitHub Releases
 
+Единый CI/CD: push в `main`, pull request в `main` и ручной запуск собирают **Release APK**. Pull request выполняет только проверку и сохраняет артефакты; push в `main` публикует новую версию. Повторная сборка уже опубликованной версии сохраняет новый APK в Actions без изменения публичного релиза.
+
 `.github/workflows/android-release.yml`: тег `v2.0` запускает сборку Release APK версии 2.0 (код 17), тесты и lintRelease, проверку подписи/версии/ABI и публикацию `RelayBridge-2.0-arm64-v8a.apk` вместе с SHA256SUMS.txt. Также доступен Actions → RelayBridge APK Release → Run workflow на основной ветке; флажок Publish APK управляет публикацией. При ручном запуске с другой ветки доступна только сборка, без публикации. Для будущей версии обновите Gradle, ожидаемые значения в scripts/verify-apk.py и CI имена артефактов перед созданием нового тега.
 
 Для подписи собственным ключом задайте четыре Repository Secrets: RELAY_UPLOAD_KEYSTORE_BASE64 (base64 байтов keystore), RELAY_UPLOAD_STORE_PASSWORD, RELAY_UPLOAD_ALIAS, RELAY_UPLOAD_KEY_PASSWORD. Если секреты отсутствуют, CI создаёт новый временный тестовый ключ. Такой APK не обновляет прежнюю установку с другой подписью. Для стабильной подписи последующих выпусков задайте собственный ключ в Secrets. Частично заданные секреты вызывают отказ сборки. Приватный ключ временно создаётся в RUNNER_TEMP, удаляется после сборки и не попадает в артефакты. Без переменных и без явного -PrelayDevelopmentSigning=true локальная release-сборка остаётся неподписанной.
