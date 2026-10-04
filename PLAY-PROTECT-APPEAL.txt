@@ -1,0 +1,17 @@
+DRAFT — not submitted. Complete with the final publisher-signed build and actual warning.
+
+Application: RelayBridge
+Package: ru.eyeone.relaybridge
+Version: 1.13 (14)
+Publisher: [REAL DEVELOPER NAME]
+Support email: [REAL CONTACT]
+Privacy policy URL: [PUBLIC HTTPS URL]
+Distribution / APK URL: [FINAL SIGNED BUILD]
+Signing certificate SHA-256: [FINAL PRODUCTION CERTIFICATE]
+Exact warning and screenshot: [ATTACH]
+
+Please review the classification of this application. RelayBridge is a user-controlled utility that forwards selected incoming events from the user's own Android device to Telegram and/or SMTP destinations explicitly configured by that user. It displays a prominent disclosure before sensitive access, obtains affirmative consent and separate Android permissions, starts only after explicit activation, and displays an ongoing status notification with a stop action. Disabling the status notification pauses capture and delivery. Sources are off by default. The app has no hidden icon, tracking backend, advertising, analytics, AccessibilityService, remote-control feature, or automatic permission grants.
+
+SMS and call-number permissions are used for incoming-event forwarding, not to read past messages or retrieve historical call logs. Any relevant Google Play permission exception must be reviewed independently; this appeal does not claim it has already been approved. Broad package visibility has been removed. An explicit user-initiated battery-exemption request is present for event-delivery automation; its policy eligibility must be assessed for publication. Telegram uses HTTPS and SMTP requires validated TLS. Secrets and message contents are encrypted locally, and users can stop forwarding, revoke consent and delete local data. Copies already delivered to third-party destinations are controlled by those destinations.
+
+[Describe what was actually flagged, attach clean-install walkthrough, final APK hash/certificate, and any Play Console declaration decision. Do not submit this draft with placeholders.]

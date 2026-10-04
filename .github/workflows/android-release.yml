@@ -1,0 +1,145 @@
+name: RelayBridge APK Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish APK in GitHub Releases
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relaybridge-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+      signing: ${{ steps.signing.outputs.signing }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install Android SDK
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Prepare release signature
+        id: signing
+        env:
+          STORE_BASE64: ${{ secrets.RELAY_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELAY_UPLOAD_STORE_PASSWORD }}
+          STORE_ALIAS: ${{ secrets.RELAY_UPLOAD_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$STORE_BASE64" || -n "$STORE_PASSWORD" || -n "$STORE_ALIAS" || -n "$KEY_PASSWORD" ]]; then
+            [[ -n "$STORE_BASE64" && -n "$STORE_PASSWORD" && -n "$STORE_ALIAS" && -n "$KEY_PASSWORD" ]] || {
+              echo 'All four release-signing secrets must be provided together' >&2
+              exit 1
+            }
+            umask 077
+            printf '%s' "$STORE_BASE64" | base64 --decode > "$RUNNER_TEMP/relay-upload.keystore"
+            echo "RELAY_UPLOAD_STORE=$RUNNER_TEMP/relay-upload.keystore" >> "$GITHUB_ENV"
+            echo 'signing=private upload key' >> "$GITHUB_OUTPUT"
+          else
+            echo 'signing=temporary CI test key' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Test, lint and build signed release APK
+        env:
+          RELAY_UPLOAD_STORE_PASSWORD: ${{ secrets.RELAY_UPLOAD_STORE_PASSWORD }}
+          RELAY_UPLOAD_ALIAS: ${{ secrets.RELAY_UPLOAD_ALIAS }}
+          RELAY_UPLOAD_KEY_PASSWORD: ${{ secrets.RELAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          python3 scripts/check-wrapper.py
+          python3 scripts/prepare-build.py
+          ./gradlew --no-daemon --console=plain -PrelayAbi=arm64-v8a \
+            -PrelayDevelopmentSigning=true testDebugUnitTest lintRelease assembleRelease
+      - name: Verify and package APK
+        id: package
+        env:
+          RELEASE_SIGNING: ${{ steps.signing.outputs.signing }}
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging \
+            app/build/outputs/apk/release/app-release.apk > app/build/release-badging.txt
+          python3 scripts/verify-apk.py app/build/outputs/apk/release/app-release.apk \
+            app/build/release-badging.txt
+          python3 scripts/package-release.py
+      - name: Delete temporary private signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/relay-upload.keystore"
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: relaybridge-release
+          path: artifacts/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: relaybridge-release-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            app/build/release-badging.txt
+          if-no-files-found: warn
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' || (inputs.publish && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: relaybridge-release
+          path: artifacts
+      - name: Verify checksum and publish immutable Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd artifacts
+          sha256sum -c SHA256SUMS.txt
+          tag="v$RELEASE_VERSION"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "$tag" ]]; then
+            echo 'Tag does not match the APK version' >&2
+            exit 1
+          fi
+          if tag_commit=$(gh api "repos/$GH_REPO/commits/$tag" --jq '.sha' 2>/dev/null); then
+            [[ "$tag_commit" == "$GITHUB_SHA" ]] || {
+              echo 'Existing version tag points to a different commit' >&2
+              exit 1
+            }
+          fi
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo 'Release already exists; existing public APK will not be overwritten' >&2
+            exit 1
+          fi
+          gh release create "$tag" "RelayBridge-$RELEASE_VERSION-arm64-v8a.apk" SHA256SUMS.txt \
+            --repo "$GH_REPO" --target "$GITHUB_SHA" --title "RelayBridge $RELEASE_VERSION" \
+            --notes-file RELEASE-NOTES.md

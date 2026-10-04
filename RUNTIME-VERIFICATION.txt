@@ -1,0 +1,12 @@
+INSTRUMENTATION_RESULT: passed=8
+INSTRUMENTATION_RESULT: stream=PASS: MainActivity launches with dark theme fields
+PASS: GUI saves valid SMTP settings, fills From, preserves password exactly
+PASS: Keystore-encrypted configuration round trip
+PASS: Encrypted queue, deduplication, destination snapshot, independent channel statuses
+PASS: Independent Telegram/SMTP test controls and restricted-settings help exist
+PASS: Application selector dialog loads
+PASS: Delivered history retains encrypted content, independent status and deletion
+PASS: Ordinary SMTP controls, dark theme navigation and synthetic UI captures
+Completed: 8 runtime checks. No real network messages sent.
+
+INSTRUMENTATION_CODE: -1
