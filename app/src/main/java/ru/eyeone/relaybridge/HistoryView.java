@@ -54,8 +54,8 @@ final class HistoryView extends LinearLayout {
         int delivered=0,pending=0,failed=0;
         for(var r:rows){if(r.tg==0||r.mail==0)pending++;if(r.tg==3||r.mail==3)failed++;if((r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3)delivered++;}
         int[] counts={rows.size(),delivered,pending,failed};for(int i=0;i<counts.length;i++)counters[i].setText(String.valueOf(counts[i]));
-        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.ACCENT:UiColors.SURFACE,on?UiColors.ACCENT:UiColors.SURFACE));counters[i].setTextColor(on?UiColors.BACKGROUND:UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);}
-        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.ACCENT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(typeFilter==i?UiColors.BACKGROUND:UiColors.TEXT);}
+        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.ACCENT:UiColors.SURFACE,on?UiColors.ACCENT:UiColors.SURFACE));counters[i].setTextColor(UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.TEXT:UiColors.MUTED);}
+        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.ACCENT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(UiColors.TEXT);}
         UiLayout.background(cards,background(UiColors.SURFACE,UiColors.BORDER));
         cards.removeAllViews();String q=search.getText().toString().toLowerCase(Locale.ROOT);int selected=selectedFilter,shown=0;
         for(var r:rows){boolean done=(r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3;

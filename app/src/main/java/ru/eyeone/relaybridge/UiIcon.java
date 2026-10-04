@@ -15,6 +15,7 @@ final class UiIcon extends Drawable {
  case 4:path.moveTo(3,4);path.lineTo(21,4);path.lineTo(21,17);path.lineTo(8,17);path.lineTo(3,22);path.close();break;
  case 5:path.moveTo(5,3);path.lineTo(9,3);path.lineTo(11,8);path.lineTo(8,10);path.quadTo(10,15,15,17);path.lineTo(17,14);path.lineTo(22,16);path.lineTo(22,20);path.quadTo(21,23,17,22);path.quadTo(3,18,2,6);path.quadTo(2,3,5,3);break;
  case 6:path.moveTo(4,18);path.lineTo(6,15);path.lineTo(6,9);path.quadTo(6,3,12,3);path.quadTo(18,3,18,9);path.lineTo(18,15);path.lineTo(20,18);path.close();path.moveTo(10,21);path.lineTo(14,21);break;
+ case 8:path.moveTo(5,2);path.lineTo(14,2);path.lineTo(19,7);path.lineTo(19,22);path.lineTo(5,22);path.close();c.drawRoundRect(8,10,16,18,1,1,p);path.moveTo(12,10);path.lineTo(12,18);path.moveTo(8,14);path.lineTo(16,14);break;
  case 7:c.drawRoundRect(2,5,22,19,1,1,p);path.moveTo(2,5);path.lineTo(12,13);path.lineTo(22,5);break;
  }
  c.drawPath(path,p);c.restore();}

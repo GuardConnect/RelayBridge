@@ -39,6 +39,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private long overviewRevision=-1;private boolean overviewLoading;
     private final java.util.concurrent.ExecutorService overviewExecutor=Executors.newSingleThreadExecutor();
 
+    private TextView simDetails,callSimDetails;
     private TextView status,journal,tgResult,mailResult,permissionStatus,simSummary,callSimSummary,overviewDetails,overviewReadiness;
     private CompoundButton sms,calls,pushes,ongoing,tg,email;
     private final TextView[] navLabels=new TextView[4];
@@ -103,9 +104,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void buildChannels(){
         sectionTab=1;section("Источники");sms=check("Входящие SMS",cfg.sms);
-        secondary("SIM для SMS",this::chooseSims);simSummary=note("");updateSimSummary();
+        secondary("SIM для SMS",this::chooseSims);simSummary=simStatus(false);updateSimSummary();
         divider();calls=check("Входящие звонки",cfg.calls);
-        secondary("SIM для звонков",()->chooseSims(true));callSimSummary=note("");updateSimSummary();
+        secondary("SIM для звонков",()->chooseSims(true));callSimSummary=simStatus(true);updateSimSummary();
         divider();pushes=check("Уведомления",cfg.pushes);
         
         appsButton=secondary("Приложения · "+cfg.apps.size(),this::chooseApps);ongoing=check("Включать постоянные уведомления",cfg.ongoing);
@@ -352,14 +353,24 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         updateSimSummary(simSummary,"SMS",cfg.smsAllSims,cfg.smsSubscriptions);
         updateSimSummary(callSimSummary,"Звонки",cfg.callAllSims,cfg.callSubscriptions);
     }
+    private TextView simStatus(boolean forCalls){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setPadding(dp(12),dp(10),dp(12),dp(10));
+        GradientDrawable shape=new GradientDrawable();shape.setColor(UiColors.SUCCESS_BG);shape.setCornerRadius(dp(12));shape.setStroke(dp(1),UiColors.BORDER);UiLayout.background(row,shape);LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(6);card.bottomMargin=dp(8);area.addView(row,card);
+        ImageView icon=new ImageView(this);icon.setImageDrawable(new UiIcon(8,UiColors.ACCENT,getResources().getDisplayMetrics().density));LinearLayout.LayoutParams image=new LinearLayout.LayoutParams(dp(20),dp(24));image.rightMargin=dp(10);row.addView(icon,image);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+        TextView title=new TextView(this);title.setTextSize(12);title.setTextColor(UiColors.TEXT);title.setIncludeFontPadding(false);title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));title.setLineSpacing(dp(2),1);words.addView(title,new LinearLayout.LayoutParams(-1,-2));
+        TextView detail=new TextView(this);detail.setTextSize(11);detail.setTextColor(UiColors.MUTED);detail.setIncludeFontPadding(false);detail.setLineSpacing(dp(2),1);LinearLayout.LayoutParams caption=new LinearLayout.LayoutParams(-1,-2);caption.topMargin=dp(4);words.addView(detail,caption);if(forCalls)callSimDetails=detail;else simDetails=detail;return title;
+    }
     private void updateSimSummary(TextView summary,String source,boolean all,Set<Integer> selected){
-        if(summary==null)return;
-        summary.setTextColor(UiColors.MUTED);
-        if(all){summary.setText(source+": все SIM-карты");return;}
-        if(selected.isEmpty()){summary.setText(source+": SIM-карты не выбраны");summary.setTextColor(UiColors.ERROR);return;}
+        if(summary==null)return;TextView detail=source.equals("SMS")?simDetails:callSimDetails;summary.setTextColor(UiColors.TEXT);detail.setTextColor(UiColors.MUTED);
+        if(all){summary.setText("Все SIM-карты");detail.setText("Автовыбор · включая новые SIM и eSIM");return;}
+        if(selected.isEmpty()){summary.setText("SIM-карты не выбраны");detail.setText(source.equals("SMS")?"Захват SMS отключён":"Захват звонков отключён");return;}
         List<String> names=new ArrayList<>();for(SimCards.Card card:SimCards.active(this))if(selected.contains(card.id))names.add(card.label);
-        summary.setText(source+": "+(names.isEmpty()?"выбранные SIM недоступны или нет разрешения телефона":String.join(", ",names)));
-        summary.setTextColor(names.size()==selected.size()?UiColors.MUTED:UiColors.PENDING);
+        summary.setText(names.isEmpty()?"Выбрано SIM-карт: "+selected.size():String.join(" · ",names));
+        if(!SimCards.permitted(this))detail.setText("Нужен доступ к состоянию телефона");
+        else if(names.isEmpty())detail.setText("Сохранённые SIM сейчас недоступны");
+        else if(names.size()<selected.size())detail.setText("Недоступно: "+(selected.size()-names.size())+" из "+selected.size()+" выбранных SIM");
+        else detail.setText(selected.size()==1?"1 выбранная SIM-карта":"Выбрано SIM-карт: "+selected.size());
     }
     private void chooseSims(){chooseSims(false);}
     private void chooseSims(boolean forCalls){
@@ -478,7 +489,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private Spinner segments(String[] values,String selected){
         Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));int pos=Arrays.asList(values).indexOf(selected);spinner.setSelection(Math.max(0,pos));spinner.setVisibility(View.GONE);area.addView(spinner);
         LinearLayout row=new LinearLayout(this);row.setPadding(dp(3),dp(3),dp(3),dp(3));UiLayout.background(row,border(UiColors.FIELD));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(10);area.addView(row,lp);
-        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
+        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.TEXT:UiColors.MUTED);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
         for(int k=0;k<values.length;k++){final int index=k;Button button=new Button(this);button.setText(values[k]);button.setTextSize(11);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setAllCaps(false);button.setPadding(0,0,0,0);button.setMinWidth(0);button.setMinimumWidth(0);row.addView(button,new LinearLayout.LayoutParams(0,-1,1));button.setOnClickListener(v->{spinner.setSelection(index);paint.run();});}paint.run();return spinner;
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
@@ -489,5 +500,5 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private Button button(String caption,Runnable action){return makeButton(caption,action,sectionTab!=2);}
     private Button secondary(String caption,Runnable action){return makeButton(caption,action,false);}
-    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(primary?UiColors.BACKGROUND:UiColors.TEXT);UiLayout.background(button,new RippleDrawable(ColorStateList.valueOf(0x22777777),border(primary?UiColors.ACCENT:UiColors.SURFACE),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
+    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(UiColors.TEXT);UiLayout.background(button,new RippleDrawable(ColorStateList.valueOf(0x22777777),border(primary?UiColors.ACCENT:UiColors.SURFACE),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
 }
