@@ -7,11 +7,14 @@ final class Events {
         return capture(c,key,kind,kind,text,text,"","","","",test);
     }
     static synchronized boolean capture(Context c,String key,String kind,String title,String message,String data,String number,String sim,String app,String pkg,boolean test) {
+        return capture(c,key,kind,title,message,data,number,sim,app,pkg,"",test);
+    }
+    static synchronized boolean capture(Context c,String key,String kind,String title,String message,String data,String number,String sim,String app,String pkg,String sender,boolean test) {
         try {
             Config cfg=Config.load(c);
             if((!cfg.enabled || !Indicator.allowed(c)) && !test) return false;
             if(!cfg.telegram && !cfg.email) return false;
-            String body=MessageTemplate.render(cfg.messageTemplate,MessageTemplate.values(kind,title,message,data,number,sim,app,pkg,System.currentTimeMillis()));
+            String body=MessageTemplate.render(cfg.messageTemplate,MessageTemplate.values(kind,title,message,data,number,sim,app,pkg,sender,System.currentTimeMillis()));
             long id=QueueDb.get(c).add(key,kind,body,cfg);
             if(id>0) {
                 Config.prefs(c).edit().putLong("last-capture",System.currentTimeMillis()).apply();

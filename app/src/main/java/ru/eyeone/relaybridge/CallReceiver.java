@@ -34,8 +34,8 @@ public class CallReceiver extends BroadcastReceiver {
             String fingerprint=TextTools.hash(number);
             if(TelephonyManager.EXTRA_STATE_RINGING.equals(p.getString("call-state-"+sub,"")) && fingerprint.equals(p.getString("call-last-"+sub,""))) return;
             p.edit().putString("call-last-"+sub,fingerprint).putString("call-state-"+sub,state).apply();
-            String sim=subscription>=0?SimCards.label(c,subscription):"SIM не определена";
-            Events.capture(c,"call-"+sub+"-"+now+"-"+fingerprint,"Входящий звонок","Входящий звонок","Номер: "+number,SimRules.callData(sim,number),number,sim,"","",false);
+            String sim=subscription>=0?SimCards.label(c,subscription):"SIM не определена";String sender=ContactNames.lookup(c,number);
+            Events.capture(c,"call-"+sub+"-"+now+"-"+fingerprint,"Входящий звонок","Входящий звонок · "+sender,"От: "+sender+"\nНомер: "+number,ContactNames.callData(sender,number,sim),number,sim,"","",sender,false);
         } catch(Exception e) { Events.fault(c,"Ошибка обработки звонка"); }
         });
     }

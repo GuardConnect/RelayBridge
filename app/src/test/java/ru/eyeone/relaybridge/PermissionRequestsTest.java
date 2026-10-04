@@ -4,7 +4,8 @@ import java.util.Set;
 import android.Manifest;
 import static org.junit.Assert.*;
 public class PermissionRequestsTest {
- @Test public void requestCodesAreDistinct(){assertEquals(6,Set.of(PermissionRequests.SMS,PermissionRequests.PHONE,PermissionRequests.CALL_LOG,PermissionRequests.STATUS,PermissionRequests.SIM_PHONE,PermissionRequests.CALL_SIM_PHONE).size());}
+ @Test public void contactsGrantIsSeparateAndDoesNotOpenSimSelector(){assertEquals(Manifest.permission.READ_CONTACTS,PermissionRequests.permission(PermissionRequests.CONTACTS));assertTrue(PermissionRequests.granted(PermissionRequests.CONTACTS,new String[]{Manifest.permission.READ_CONTACTS},new int[]{0}));assertFalse(PermissionRequests.opensSims(PermissionRequests.CONTACTS,new String[]{Manifest.permission.READ_CONTACTS},new int[]{0}));}
+ @Test public void requestCodesAreDistinct(){assertEquals(7,Set.of(PermissionRequests.SMS,PermissionRequests.PHONE,PermissionRequests.CALL_LOG,PermissionRequests.STATUS,PermissionRequests.SIM_PHONE,PermissionRequests.CALL_SIM_PHONE,PermissionRequests.CONTACTS).size());}
  @Test public void notificationGrantNeverOpensSimSelector(){assertTrue(PermissionRequests.granted(PermissionRequests.STATUS,new String[]{Manifest.permission.POST_NOTIFICATIONS},new int[]{0}));assertFalse(PermissionRequests.opensSims(PermissionRequests.STATUS,new String[]{Manifest.permission.POST_NOTIFICATIONS},new int[]{0}));}
  @Test public void ordinaryPhoneGrantDoesNotContinueToSims(){assertFalse(PermissionRequests.opensSims(PermissionRequests.PHONE,new String[]{Manifest.permission.READ_PHONE_STATE},new int[]{0}));}
  @Test public void simPhoneGrantContinuesToSelector(){assertTrue(PermissionRequests.opensSims(PermissionRequests.SIM_PHONE,new String[]{Manifest.permission.READ_PHONE_STATE},new int[]{0}));}

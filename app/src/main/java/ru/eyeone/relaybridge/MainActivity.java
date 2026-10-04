@@ -34,7 +34,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private boolean syncingRelayToggle;
     private LinearLayout missingAccess,grantedAccess;
     private TextView accessCount;
-    private View[] accessSegments=new View[7];
+    private View[] accessSegments=new View[8];
     private String accessSignature="";
     private long overviewRevision=-1;private boolean overviewLoading;
     private final java.util.concurrent.ExecutorService overviewExecutor=Executors.newSingleThreadExecutor();
@@ -111,7 +111,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         secondary("SIM для звонков",()->chooseSims(true));callSimList=simStatus();updateSimSummary();
         divider();pushes=check("Уведомления",cfg.pushes);
         
-        appsButton=secondary("Выберите приложения из списка установленных",this::chooseApps);
+        appsButton=button("Выберите приложения из списка установленных",this::chooseApps);
         selectedAppsCount=note("");selectedAppsList=new LinearLayout(this);selectedAppsList.setOrientation(LinearLayout.VERTICAL);area.addView(selectedAppsList,new LinearLayout.LayoutParams(-1,-2));updateSelectedApps();
         ongoing=check("Включать постоянные уведомления",cfg.ongoing);
 
@@ -138,7 +138,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         formHelp("Переносы строк сохраняются. Изменения применятся к новым событиям после сохранения.");
         pair(()->secondary("Предпросмотр",this::previewTemplate),()->secondary("По умолчанию",()->templateField.setText(MessageTemplate.DEFAULT)),1,1);
         formLabel("Добавить переменную");
-        LinearLayout parent=area;LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.VERTICAL);parent.addView(chips);String[] variables={"time","date","type","data","title","message","number","sim","app","package"};
+        LinearLayout parent=area;LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.VERTICAL);parent.addView(chips);String[] variables={"time","date","type","data","title","message","number","sender","sim","app","package"};
         for(int row=0;row<(variables.length+1)/2;row++){LinearLayout line=new LinearLayout(this);line.setBaselineAligned(false);chips.addView(line,new LinearLayout.LayoutParams(-1,-2));for(int j=row*2;j<Math.min(variables.length,row*2+2);j++){String value="{{"+variables[j]+"}}";TextView chip=new TextView(this);chip.setText(value);chip.setTextColor(UiColors.TEXT);chip.setTextSize(12);chip.setIncludeFontPadding(false);chip.setGravity(Gravity.CENTER);chip.setTypeface(Typeface.MONOSPACE);chip.setPadding(dp(8),dp(8),dp(8),dp(8));chip.setMinHeight(dp(40));UiLayout.background(chip,border(UiColors.SUCCESS_BG));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);if(j%2==0)lp.rightMargin=dp(6);lp.topMargin=dp(6);line.addView(chip,lp);chip.setOnClickListener(v->{int start=Math.max(0,templateField.getSelectionStart()),end=Math.max(start,templateField.getSelectionEnd());templateField.getText().replace(start,end,value);});}}
         formHelp("Нажмите переменную, чтобы вставить её в позицию курсора.");
         secondary("Справка по переменным",this::templateHelp);
@@ -146,7 +146,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void buildAccess(){
         sectionTab=2;section("Проверка доступа");area.setBackgroundColor(UiColors.BACKGROUND);area.setPadding(0,0,0,0);permissionStatus=note("");accessCount=permissionStatus;accessCount.setTextSize(26);accessCount.setTypeface(null,Typeface.BOLD);accessCount.setTextColor(UiColors.TEXT);
-        LinearLayout progress=new LinearLayout(this);area.addView(progress);for(int i=0;i<7;i++){View bar=new View(this);accessSegments[i]=bar;LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(4),1);lp.setMargins(0,dp(8),dp(4),dp(8));progress.addView(bar,lp);}
+        LinearLayout progress=new LinearLayout(this);area.addView(progress);for(int i=0;i<accessSegments.length;i++){View bar=new View(this);accessSegments[i]=bar;LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(4),1);lp.setMargins(0,dp(8),dp(4),dp(8));progress.addView(bar,lp);}
         section("Нужно выдать");missingAccess=area;missingAccess.setBackgroundColor(UiColors.BACKGROUND);missingAccess.setPadding(0,0,0,0);
         section("Уже выдано");grantedAccess=area;
         section("Системные настройки");
@@ -166,12 +166,12 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private void updateAccess(boolean[] flags){
         String key=Arrays.toString(flags)+RelayListener.connected;if(key.equals(accessSignature))return;accessSignature=key;
         missingAccess.removeAllViews();grantedAccess.removeAllViews();LinearLayout old=area;
-        String[] labels={"Получение SMS","Состояние телефона и SIM","Журнал звонков","Доступ к уведомлениям","Уведомления приложения","Уведомление о работе","Работа без ограничений"};
-        String[] hints={"Для новых входящих SMS.","Для звонков и выбора SIM.","Для номера входящего звонка. Без него номер может быть недоступен.","Для уведомлений выбранных приложений.","Для отображения состояния RelayBridge.","Разрешите уведомления RelayBridge и канал состояния.","Исключение из оптимизации батареи для фоновой доставки."};
-        Runnable[] actions={()->requestAccess(PermissionRequests.SMS),()->requestAccess(PermissionRequests.PHONE),()->requestAccess(PermissionRequests.CALL_LOG),()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),()->requestAccess(PermissionRequests.STATUS),this::openStatusNotificationSettings,this::requestUnrestrictedBackground};
+        String[] labels={"Получение SMS","Состояние телефона и SIM","Журнал звонков","Доступ к уведомлениям","Уведомления приложения","Уведомление о работе","Работа без ограничений","Имена отправителей из контактов"};
+        String[] hints={"Для новых входящих SMS.","Для звонков и выбора SIM.","Для номера входящего звонка. Без него номер может быть недоступен.","Для уведомлений выбранных приложений.","Для отображения состояния RelayBridge.","Разрешите уведомления RelayBridge и канал состояния.","Исключение из оптимизации батареи для фоновой доставки.","Необязательно. Для имени отправителя SMS и звонка; без доступа номер и пересылка сохраняются."};
+        Runnable[] actions={()->requestAccess(PermissionRequests.SMS),()->requestAccess(PermissionRequests.PHONE),()->requestAccess(PermissionRequests.CALL_LOG),()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),()->requestAccess(PermissionRequests.STATUS),this::openStatusNotificationSettings,this::requestUnrestrictedBackground,()->requestAccess(PermissionRequests.CONTACTS)};
         int count=0;for(int i=0;i<flags.length;i++){if(flags[i]){count++;grantedRow(labels[i]+(i==3&&RelayListener.connected?" · подключена":""));}else{LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));UiLayout.background(card,border(UiColors.SURFACE));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);missingAccess.addView(card,lp);area=card;title(labels[i],17);note(hints[i]);makeButton("Разрешить",actions[i],true);}}
-        if(count==7){area=missingAccess;note("Все разрешения выданы");}if(count==0){area=grantedAccess;note("Выданных разрешений пока нет");}
-        accessCount.setText(count==7?"Всё готово · 7 / 7":"Осталось "+(7-count)+" · "+count+" / 7");for(int i=0;i<7;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
+        if(count==flags.length){area=missingAccess;note("Все разрешения выданы");}if(count==0){area=grantedAccess;note("Выданных разрешений пока нет");}
+        accessCount.setText((count==flags.length?"Все разрешения выданы":"Разрешено")+" · "+count+" / "+flags.length);for(int i=0;i<accessSegments.length;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
     }
     private void buildHistory(){
         sectionTab=3;section(" ");journal=note("");journal.setVisibility(View.GONE);area.setPadding(0,0,0,0);area.setBackgroundColor(UiColors.BACKGROUND);
@@ -208,6 +208,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private String permissionReason(int request){return switch(request){
         case PermissionRequests.SMS -> "RECEIVE_SMS позволяет получать новые SMS для выбранных SIM и пересылать их указанным вами получателям. Старые SMS не читаются. Без этого доступа SMS-пересылка недоступна; остальные функции остаются доступны.";
         case PermissionRequests.PHONE,PermissionRequests.SIM_PHONE,PermissionRequests.CALL_SIM_PHONE -> "Доступ к состоянию телефона нужен для события входящего звонка и определения активных SIM. Без него эти функции недоступны.";
+        case PermissionRequests.CONTACTS -> "Доступ к контактам нужен только для локального поиска имени отправителя нового SMS или звонка. Имя будет включено в пересылаемое сообщение. Адресная книга целиком не отправляется. Доступ необязателен: без него пересылка по номеру продолжит работать.";
         case PermissionRequests.CALL_LOG -> "Android требует READ_CALL_LOG для номера входящего звонка. Приложение не извлекает историю звонков. Можно отказаться: событие звонка может передаваться без номера.";
         default -> "Уведомление RelayBridge показывает, что пересылка включена, и позволяет её остановить. Без него фоновая пересылка приостановлена.";
     };}
@@ -262,7 +263,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
             boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(UiColors.MUTED);recipientSummary.setTextColor(UiColors.MUTED);sourceSummary.setTextColor(UiColors.MUTED);
-            updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName())});
+            updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName()),granted(Manifest.permission.READ_CONTACTS)});
             long last=Config.prefs(this).getLong("last-capture",0);
             String received=last>0?"Последнее событие: "+android.text.format.DateFormat.format("dd.MM HH:mm:ss",last)+"\n\n":"Новых событий в очереди пока нет.\n\n";
             journal.setText(received+Config.prefs(this).getString("fault",""));
@@ -288,13 +289,13 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         next.from=from.getText().toString().trim();if(next.from.isBlank())next.from=next.user;
         next.to=to.getText().toString().trim();next.apps.addAll(cfg.apps);return next;
     }
-    private void templateHelp(){dialogBuilder().setTitle("Переменные сообщений").setMessage("{{time}} — дата и время с часовым поясом\n{{date}} — дата\n{{type}} — тип события\n{{data}} — все данные события, включая отправителя/SIM или приложение\n{{title}} — заголовок уведомления, SMS от номера или Входящий звонок\n{{message}} — текст SMS/уведомления или номер звонка с подписью\n{{number}} — номер отправителя/звонящего\n{{sim}} — SIM для SMS/звонка, если доступна\n{{app}} — название приложения\n{{package}} — пакет приложения\n\nНедоступные значения пустые. Переносы строк сохраняются. HTML/Markdown автоматически не включается. Тесты соединения отправляют свой технический текст; для шаблона используйте Предпросмотр. Нажмите Сохранить настройки для применения к новым событиям.").setPositiveButton("Понятно",null).show();}
+    private void templateHelp(){dialogBuilder().setTitle("Переменные сообщений").setMessage("{{time}} — дата и время с часовым поясом\n{{date}} — дата\n{{type}} — тип события\n{{data}} — все данные события, включая отправителя/SIM или приложение\n{{title}} — заголовок уведомления, SMS от номера или Входящий звонок\n{{message}} — текст SMS/уведомления или номер звонка с подписью\n{{number}} — исходный номер отправителя/звонящего\n{{sender}} — имя из контактов или Неизвестный отправитель\n{{sim}} — SIM для SMS/звонка, если доступна\n{{app}} — название приложения\n{{package}} — пакет приложения\n\nНедоступные значения пустые. Переносы строк сохраняются. HTML/Markdown автоматически не включается. Тесты соединения отправляют свой технический текст; для шаблона используйте Предпросмотр. Нажмите Сохранить настройки для применения к новым событиям.").setPositiveButton("Понятно",null).show();}
     private String previewMessage(String template,Map<String,String> values){
         try{return MessageTemplate.render(template,values);}catch(IllegalArgumentException e){return "[Для этого типа событий текст пустой. Добавьте {{data}} или {{message}}.]";}
     }
     private void previewTemplate(){
-        try{String template=templateField.getText().toString();MessageTemplate.validate(template);long now=System.currentTimeMillis();String sms=previewMessage(template,MessageTemplate.values("SMS","SMS от +70000000000","Пример SMS","От: +70000000000\nSIM: Sim 1 MTS\nПример SMS","+70000000000","Sim 1 MTS","","",now));
-            String call=previewMessage(template,MessageTemplate.values("Входящий звонок","Входящий звонок","Номер: +70000000000","SIM: Sim 1 MTS\nНомер: +70000000000","+70000000000","Sim 1 MTS","","",now));
+        try{String template=templateField.getText().toString();MessageTemplate.validate(template);long now=System.currentTimeMillis();String sms=previewMessage(template,MessageTemplate.values("SMS","SMS от Алексей","Пример SMS",ContactNames.smsData("Алексей","+70000000000","Sim 1 MTS","Пример SMS"),"+70000000000","Sim 1 MTS","","","Алексей",now));
+            String call=previewMessage(template,MessageTemplate.values("Входящий звонок","Входящий звонок · Мария","От: Мария\nНомер: +70000000000",ContactNames.callData("Мария","+70000000000","Sim 1 MTS"),"+70000000000","Sim 1 MTS","","","Мария",now));
             String push=previewMessage(template,MessageTemplate.values("Уведомление","Новое сообщение","Пример уведомления","Signal (org.thoughtcrime.securesms)\nНовое сообщение\nПример уведомления","","","Signal","org.thoughtcrime.securesms",now));
             TextView content=new TextView(this);content.setTextColor(UiColors.TEXT);content.setTextSize(14);content.setTextIsSelectable(true);content.setPadding(dp(16),dp(12),dp(16),dp(12));content.setText("SMS\n"+sms+"\n\nЗВОНОК\n"+call+"\n\nУВЕДОМЛЕНИЕ\n"+push);ScrollView view=new ScrollView(this);view.addView(content);dialogBuilder().setTitle("Предпросмотр · пример данных").setView(view).setPositiveButton("Закрыть",null).show();
         }catch(IllegalArgumentException e){toast(e.getMessage());}

@@ -5,7 +5,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 final class MessageTemplate {
     static final String DEFAULT="RelayBridge · {{type}}\n{{time}}\n\n{{data}}";
-    static final Set<String> VARIABLES=Set.of("time","date","type","data","title","message","number","sim","app","package");
+    static final Set<String> VARIABLES=Set.of("time","date","type","data","title","message","number","sim","app","package","sender");
     private static final Pattern TOKEN=Pattern.compile("\\{\\{\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\}\\}");
     static void validate(String template){
         if(template==null||template.isBlank())throw new IllegalArgumentException("Шаблон сообщения не может быть пустым");
@@ -15,9 +15,12 @@ final class MessageTemplate {
         String literals=matcher.replaceAll("");if(literals.contains("{{")||literals.contains("}}"))throw new IllegalArgumentException("Переменные записываются как {{time}} — проверьте скобки");
     }
     static Map<String,String> values(String type,String title,String message,String data,String number,String sim,String app,String pkg,long millis){
+        return values(type,title,message,data,number,sim,app,pkg,"",millis);
+    }
+    static Map<String,String> values(String type,String title,String message,String data,String number,String sim,String app,String pkg,String sender,long millis){
         ZonedDateTime time=Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault());Map<String,String> v=new HashMap<>();
         v.put("time",time.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss XXX",Locale.ROOT)));v.put("date",time.format(DateTimeFormatter.ISO_LOCAL_DATE));
-        String[] names={"type","title","message","data","number","sim","app","package"};String[] content={type,title,message,data,number,sim,app,pkg};
+        String[] names={"type","title","message","data","number","sim","app","package","sender"};String[] content={type,title,message,data,number,sim,app,pkg,sender};
         for(int i=0;i<names.length;i++)v.put(names[i],content[i]==null?"":content[i]);return v;
     }
     static String render(String template,Map<String,String> values){

@@ -77,7 +77,7 @@ final class HistoryView extends LinearLayout {
     }
     static String displayTitle(QueueDb.HistoryRow r){
         if(!r.body.startsWith("RelayBridge · "))return r.kind;int start=r.body.indexOf("\n\n");if(start<0)return r.kind;String data=r.body.substring(start+2);
-        if(r.kind.equals("SMS")){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?m)^От: ([^\n]+)").matcher(data);if(m.find())return "SMS от "+m.group(1);}
+        if(r.kind.equals("SMS")||r.kind.equals("Входящий звонок")){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?m)^От: ([^\n]+)").matcher(data);if(m.find())return r.kind+" от "+m.group(1);}
         if(r.kind.equals("Уведомление")){String[] lines=data.split("\n",3);if(lines.length>=2){String app=lines[0];int pkg=app.indexOf(" (");if(pkg>0)app=app.substring(0,pkg);return app+" · "+lines[1];}}
         return r.kind;
     }
