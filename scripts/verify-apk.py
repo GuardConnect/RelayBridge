@@ -8,8 +8,8 @@ from pathlib import Path
 apk, badging = map(Path, sys.argv[1:])
 text = badging.read_text()
 package = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", text)
-if not package or package.groups() != ('ru.eyeone.relaybridge', '27', '2.10'):
-    raise SystemExit('Unexpected package or version; expected ru.eyeone.relaybridge 2.10 (27)')
+if not package or package.groups() != ('ru.eyeone.relaybridge', '28', '2.11'):
+    raise SystemExit('Unexpected package or version; expected ru.eyeone.relaybridge 2.11 (28)')
 with zipfile.ZipFile(apk) as archive:
     bad_entry = archive.testzip()
     if bad_entry:
@@ -17,5 +17,5 @@ with zipfile.ZipFile(apk) as archive:
     libraries = [n for n in archive.namelist() if n.startswith('lib/') and n.endswith('.so')]
     if any(n.split('/')[1] != 'arm64-v8a' for n in libraries):
         raise SystemExit('APK contains native libraries outside arm64-v8a')
-print('PASS: version 2.10 (27); ARM64 native libraries only' if libraries
-      else 'PASS: version 2.10 (27); Java-only universal APK, compatible with ARMv8')
+print('PASS: version 2.11 (28); ARM64 native libraries only' if libraries
+      else 'PASS: version 2.11 (28); Java-only universal APK, compatible with ARMv8')

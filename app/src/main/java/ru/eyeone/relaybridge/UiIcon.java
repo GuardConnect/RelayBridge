@@ -16,6 +16,16 @@ final class UiIcon extends Drawable {
  case 5:path.moveTo(5,3);path.lineTo(9,3);path.lineTo(11,8);path.lineTo(8,10);path.quadTo(10,15,15,17);path.lineTo(17,14);path.lineTo(22,16);path.lineTo(22,20);path.quadTo(21,23,17,22);path.quadTo(3,18,2,6);path.quadTo(2,3,5,3);break;
  case 6:path.moveTo(4,18);path.lineTo(6,15);path.lineTo(6,9);path.quadTo(6,3,12,3);path.quadTo(18,3,18,9);path.lineTo(18,15);path.lineTo(20,18);path.close();path.moveTo(10,21);path.lineTo(14,21);break;
  case 8:path.moveTo(5,2);path.lineTo(14,2);path.lineTo(19,7);path.lineTo(19,22);path.lineTo(5,22);path.close();c.drawRoundRect(8,10,16,18,1,1,p);path.moveTo(12,10);path.lineTo(12,18);path.moveTo(8,14);path.lineTo(16,14);break;
+ // Reconnect: circular arrows.
+ case 9:c.drawArc(3,3,21,21,40,135,false,p);c.drawArc(3,3,21,21,220,135,false,p);path.moveTo(21,8);path.lineTo(21,3);path.lineTo(16,3);path.moveTo(3,16);path.lineTo(3,21);path.lineTo(8,21);break;
+ // Inactivity: clock with pause bars.
+ case 10:c.drawCircle(12,12,9,p);path.moveTo(12,6);path.lineTo(12,12);path.lineTo(8,12);path.moveTo(15,13);path.lineTo(15,17);path.moveTo(18,13);path.lineTo(18,17);break;
+ // Battery optimization: battery with a lightning bolt.
+ case 11:c.drawRoundRect(2,6,20,18,2,2,p);path.moveTo(22,10);path.lineTo(22,14);path.moveTo(12,8);path.lineTo(8,13);path.lineTo(13,13);path.lineTo(10,16);break;
+ // App details: app tile with information symbol.
+ case 12:c.drawRoundRect(3,3,21,21,4,4,p);path.moveTo(12,11);path.lineTo(12,17);c.drawPoint(12,7,p);break;
+ // Permission help: question mark in a circle.
+ case 13:c.drawCircle(12,12,9,p);path.moveTo(9,8);path.cubicTo(9,5,15,5,15,9);path.cubicTo(15,11,12,11,12,14);c.drawPoint(12,18,p);break;
  case 7:c.drawRoundRect(2,5,22,19,1,1,p);path.moveTo(2,5);path.lineTo(12,13);path.lineTo(22,5);break;
  }
  c.drawPath(path,p);c.restore();}

@@ -146,11 +146,11 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         section("Нужно выдать");missingAccess=area;missingAccess.setBackgroundColor(UiColors.BACKGROUND);missingAccess.setPadding(0,0,0,0);
         section("Уже выдано");grantedAccess=area;
         section("Системные настройки");
-        linkRow("Переподключить службу уведомлений","",this::reconnectListener,6);
-        linkRow("Приостановка при неактивности","",this::manageUnusedApp,2);
-        linkRow("Оптимизация батареи","",()->open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)),2);
-        linkRow("Карточка приложения","",this::openAppSettings,2);
-        linkRow("Почему Android блокирует разрешения?","",this::permissionHelp,2);
+        linkRow("Переподключить службу уведомлений","",this::reconnectListener,9);
+        linkRow("Приостановка при неактивности","",this::manageUnusedApp,10);
+        linkRow("Оптимизация батареи","",()->open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)),11);
+        linkRow("Карточка приложения","",this::openAppSettings,12);
+        linkRow("Почему Android блокирует разрешения?","",this::permissionHelp,13);
     }
     private void grantedRow(String label){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(60));row.setPadding(0,dp(10),0,dp(10));grantedAccess.addView(row,new LinearLayout.LayoutParams(-1,-2));
@@ -479,7 +479,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void title(String text,int size){TextView label=note(text);label.setIncludeFontPadding(false);label.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);label.setTextSize(size);label.setTextColor(UiColors.TEXT);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,0,0,dp(4));}
     private void section(String caption){
-        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);heading.setTextSize(11);if(sectionTab==1&&!caption.equals("Источники"))heading.setTextColor(UiColors.TEXT);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
+        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);heading.setTextSize(11);heading.setTextColor(UiColors.ACCENT);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(14),dp(16),dp(14));UiLayout.background(card,border(UiColors.SURFACE));page.addView(card,new LinearLayout.LayoutParams(-1,-2));sections.add(heading);sectionTabs.add(sectionTab);sections.add(card);sectionTabs.add(sectionTab);area=card;
     }
     private void selectTab(int tab){
