@@ -57,7 +57,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private static final class Draft {Config config;String port;int scroll,tab;}
 
     @Override public void onCreate(Bundle saved) {
-        super.onCreate(saved);pendingPermissionRequest=saved==null?0:saved.getInt("permission-request",0);getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        super.onCreate(saved);pendingPermissionRequest=saved==null?0:saved.getInt("permission-request",0);
         try {cfg=Config.load(this);}catch(Exception e){dialogBuilder().setTitle("Настройки недоступны")
             .setMessage("Не удалось расшифровать настройки. Можно сбросить данные и настроить приложение заново.")
             .setPositiveButton("Сбросить",(d,w)->{Config.prefs(this).edit().clear().apply();Events.clear(this);recreate();})

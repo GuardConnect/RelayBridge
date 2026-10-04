@@ -96,7 +96,6 @@ public class SmokeInstrumentation extends Instrumentation {
                 check(findText(screen.getWindow().getDecorView(),"Войти в Google")==null,"Removed sign-in control remains");
                 check(findText(screen.getWindow().getDecorView(),"SMTP сервер")!=null,"SMTP server field missing");
                 navigate(screen,0);
-                screen.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
             });
             Thread.sleep(800);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"overview.png");
             runOnMainSync(()->{navigate(screen,1);View smsLabel=findText(screen.getWindow().getDecorView(),"Входящие SMS");findToggle((View)smsLabel.getParent()).setChecked(true);});Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"channels.png");
@@ -104,7 +103,6 @@ public class SmokeInstrumentation extends Instrumentation {
             runOnMainSync(()->navigate(screen,3));Thread.sleep(1000);capture(screen,"history-empty.png");
             long mock=db.add("visual-notification","Уведомление","RelayBridge · Уведомление\n2026-10-04 07:00\n\nSignal (org.thoughtcrime.securesms)\nТест интерфейса\nСообщение передано в выбранные каналы.",route);db.update(mock,"tg",1);db.update(mock,"mail",1);db.redactDone(mock);
             runOnMainSync(()->navigate(screen,3));Thread.sleep(1000);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"history.png");
-            runOnMainSync(()->screen.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE));
             pass("Ordinary SMTP controls, dark theme navigation and synthetic UI captures");
             report.append("Completed: ").append(passed).append(" runtime checks. No real network messages sent.\n");
             Bundle result=new Bundle();result.putString("stream",report.toString());result.putInt("passed",passed);finish(Activity.RESULT_OK,result);
