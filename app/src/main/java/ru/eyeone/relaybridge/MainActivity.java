@@ -56,7 +56,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);pendingPermissionRequest=saved==null?0:saved.getInt("permission-request",0);getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        try {cfg=Config.load(this);}catch(Exception e){new AlertDialog.Builder(this).setTitle("Настройки недоступны")
+        try {cfg=Config.load(this);}catch(Exception e){dialogBuilder().setTitle("Настройки недоступны")
             .setMessage("Не удалось расшифровать настройки. Можно сбросить данные и настроить приложение заново.")
             .setPositiveButton("Сбросить",(d,w)->{Config.prefs(this).edit().clear().apply();Events.clear(this);recreate();})
             .setNegativeButton("Закрыть",(d,w)->finish()).setCancelable(false).show();return;}
@@ -82,13 +82,13 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     }
     private void consent(Runnable next){
-        new AlertDialog.Builder(this).setTitle("Передача личных данных")
+        dialogBuilder().setTitle("Передача личных данных")
             .setMessage(Consent.DISCLOSURE).setPositiveButton("Согласен",(d,w)->{try{Config paused=Config.load(this);paused.enabled=false;paused.save(this);if(Config.prefs(this).edit().putInt("consent-version",Consent.VERSION).commit())next.run();else toast("Не удалось сохранить согласие");}catch(Exception e){toast("Не удалось сохранить согласие");}})
             .setNegativeButton("Отмена",null).show();
     }
     private void privacy(){
-        TextView text=new TextView(this);text.setText(Consent.PRIVACY);text.setTextColor(UiColors.TEXT);text.setPadding(dp(16),dp(12),dp(16),dp(12));text.setTextIsSelectable(true);ScrollView view=new ScrollView(this);view.addView(text);
-        new AlertDialog.Builder(this).setTitle("Конфиденциальность RelayBridge").setView(view).setPositiveButton("Закрыть",null).show();
+        TextView text=new TextView(this);text.setText(Consent.PRIVACY);text.setTextColor(UiColors.ACCENT);text.setPadding(dp(16),dp(12),dp(16),dp(12));text.setTextIsSelectable(true);ScrollView view=new ScrollView(this);view.addView(text);
+        dialogBuilder().setTitle("Конфиденциальность RelayBridge").setView(view).setPositiveButton("Закрыть",null).show();
     }
     private void buildOverview(){
         sectionTab=0;section("Пересылка");
@@ -125,7 +125,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         
         from=field("Email отправителя",cfg.from,false);from.setHint("sender@example.com");formHelp("Если адрес пуст, будет использован SMTP-логин.");to=field("Email получателя",cfg.to,false);to.setHint("recipient@example.com");formHelp("Несколько адресов — через запятую или точку с запятой.");
         
-        secondary("Помощь по SMTP",()->new AlertDialog.Builder(this).setTitle("Настройка SMTP").setMessage("STARTTLS обычно использует порт 587, SSL — 465. Уточняйте настройки у провайдера. AUTO выбирает LOGIN/PLAIN. NONE в авторизации — relay без входа; защищённое TLS-соединение обязательно. Принятие сервером не гарантирует попадание во Входящие — проверьте Спам.").setPositiveButton("Понятно",null).show());
+        secondary("Помощь по SMTP",()->dialogBuilder().setTitle("Настройка SMTP").setMessage("STARTTLS обычно использует порт 587, SSL — 465. Уточняйте настройки у провайдера. AUTO выбирает LOGIN/PLAIN. NONE в авторизации — relay без входа; защищённое TLS-соединение обязательно. Принятие сервером не гарантирует попадание во Входящие — проверьте Спам.").setPositiveButton("Понятно",null).show());
         pair(()->secondary("Лог SMTP",this::showSmtpLog),()->secondary("Копировать лог",this::copySmtpLog),1,1);
         mailTestButton=secondary("Тестовое письмо",()->testChannel(false));mailResult=formHelp(ConnectionTests.emailStatus);
 
@@ -174,9 +174,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         history=new HistoryView(this);area.addView(history,new LinearLayout.LayoutParams(-1,-2));
         section("Очередь и данные");
         secondary("Конфиденциальность",this::privacy);
-        secondary("Отозвать согласие и удалить все данные",()->new AlertDialog.Builder(this).setTitle("Удалить данные RelayBridge?").setMessage("Пересылка будет остановлена. Удалятся настройки, пароли, локальная очередь и журнал. Уже отправленные копии в Telegram и почте останутся у получателей.").setPositiveButton("Удалить",(d,w)->{try{Indicator.stop(this);Events.clear(this);SmtpLog.clear();Config.prefs(this).edit().clear().commit();recreate();}catch(Exception e){toast("Не удалось удалить данные");}}).setNegativeButton("Отмена",null).show());
+        secondary("Отозвать согласие и удалить все данные",()->dialogBuilder().setTitle("Удалить данные RelayBridge?").setMessage("Пересылка будет остановлена. Удалятся настройки, пароли, локальная очередь и журнал. Уже отправленные копии в Telegram и почте останутся у получателей.").setPositiveButton("Удалить",(d,w)->{try{Indicator.stop(this);Events.clear(this);SmtpLog.clear();Config.prefs(this).edit().clear().commit();recreate();}catch(Exception e){toast("Не удалось удалить данные");}}).setNegativeButton("Отмена",null).show());
         secondary("Проверить и восстановить очередь",()->{Events.recover(this);updateStatus();toast("Ожидающие задания восстановлены");});
-        secondary("Очистить очередь и журнал",()->new AlertDialog.Builder(this).setMessage("Удалить также ещё не доставленные события?").setPositiveButton("Удалить",(d,w)->{Events.clear(this);updateStatus();}).setNegativeButton("Отмена",null).show());
+        secondary("Очистить очередь и журнал",()->dialogBuilder().setMessage("Удалить также ещё не доставленные события?").setPositiveButton("Удалить",(d,w)->{Events.clear(this);updateStatus();}).setNegativeButton("Отмена",null).show());
         note("Записи зашифрованы. Нажмите событие для подробностей. Хранится до 500 событий за 7 дней; Android может скрывать чувствительные уведомления.");
     }
     @Override public Object onRetainCustomNonConfigurationInstance(){
@@ -196,7 +196,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             updateStatus();updateSimSummary();return;
         }
         if(shouldShowRequestPermissionRationale(permission)){
-            new AlertDialog.Builder(this).setTitle("Зачем нужен доступ")
+            dialogBuilder().setTitle("Зачем нужен доступ")
                 .setMessage(permissionReason(request)).setPositiveButton("Продолжить",(d,w)->launchPermission(request))
                 .setNegativeButton("Отмена",null).show();
         }else launchPermission(request);
@@ -220,9 +220,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         updateStatus();updateSimSummary();
         if(accepted&&(request==PermissionRequests.SIM_PHONE||request==PermissionRequests.CALL_SIM_PHONE))chooseSims(request==PermissionRequests.CALL_SIM_PHONE);
         else if(!accepted){
-            if(request==PermissionRequests.STATUS)new AlertDialog.Builder(this).setTitle("Уведомление о работе отключено").setMessage("Разрешите уведомления RelayBridge в системных настройках. Это отдельный доступ от чтения уведомлений других приложений.").setPositiveButton("Открыть настройки",(d,w)->openStatusNotificationSettings()).setNegativeButton("Закрыть",null).show();
+            if(request==PermissionRequests.STATUS)dialogBuilder().setTitle("Уведомление о работе отключено").setMessage("Разрешите уведомления RelayBridge в системных настройках. Это отдельный доступ от чтения уведомлений других приложений.").setPositiveButton("Открыть настройки",(d,w)->openStatusNotificationSettings()).setNegativeButton("Закрыть",null).show();
             else if(shouldShowRequestPermissionRationale(permission))toast("Доступ не выдан. Остальные функции доступны.");
-            else new AlertDialog.Builder(this).setTitle("Доступ не выдан")
+            else dialogBuilder().setTitle("Доступ не выдан")
                 .setMessage("Android не выдал разрешение. Причиной может быть отказ без повторного диалога, ограничение установщика, настройка безопасности или политика администратора. Результат запроса не сообщает точную причину. Вы можете проверить доступ в карточке приложения; без разрешения соответствующая функция отключена.")
                 .setPositiveButton("Проверить настройки",(d,w)->openAppSettings()).setNegativeButton("Закрыть",null).show();
         }
@@ -237,7 +237,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private boolean listenerGranted(){return getSystemService(NotificationManager.class).isNotificationListenerAccessGranted(new ComponentName(this,RelayListener.class));}
     private void rebindQuietly(){try{NotificationListenerService.requestRebind(new ComponentName(this,RelayListener.class));}catch(Exception ignored){}}
     private void reconnectListener(){if(!listenerGranted()){toast("Сначала разрешите доступ к уведомлениям в системном списке");return;}rebindQuietly();toast("Запрошено переподключение службы");}
-    private void permissionHelp(){new AlertDialog.Builder(this).setTitle("Разрешение не выдаётся Android")
+    private void permissionHelp(){dialogBuilder().setTitle("Разрешение не выдаётся Android")
         .setMessage("Для APK из файла Android 15 может блокировать SMS и доступ к уведомлениям до отдельного подтверждения.\n\nОткройте Настройки → Приложения → RelayBridge → меню ⋮ → «Разрешить ограниченные настройки». После подтверждения вернитесь и снова запросите разрешение.\n\nЕсли пункта нет или запрет сохраняется, установщик/прошивка или администратор может не разрешать этот доступ. Само приложение не может отменить запрет. Тесты Telegram и email работают без этих разрешений.")
         .setPositiveButton("Открыть карточку",(d,w)->openAppSettings()).setNegativeButton("Закрыть",null).show();}
     private void openAppSettings(){open(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));}
@@ -257,7 +257,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);syncRelayToggle(cfg.enabled);relayMode.setText(cfg.enabled?"ВКЛ":"ВЫКЛ");relayToggle.setContentDescription(cfg.enabled?"Выключить пересылку":"Включить пересылку");
             recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
-            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(channelReady&&missing.isEmpty()?UiColors.SUCCESS:UiColors.PENDING);
+            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(UiColors.ACCENT);
             updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName())});
             long last=Config.prefs(this).getLong("last-capture",0);
             String received=last>0?"Последнее событие: "+android.text.format.DateFormat.format("dd.MM HH:mm:ss",last)+"\n\n":"Новых событий в очереди пока нет.\n\n";
@@ -284,7 +284,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         next.from=from.getText().toString().trim();if(next.from.isBlank())next.from=next.user;
         next.to=to.getText().toString().trim();next.apps.addAll(cfg.apps);return next;
     }
-    private void templateHelp(){new AlertDialog.Builder(this).setTitle("Переменные сообщений").setMessage("{{time}} — дата и время с часовым поясом\n{{date}} — дата\n{{type}} — тип события\n{{data}} — все данные события, включая отправителя/SIM или приложение\n{{title}} — заголовок уведомления, SMS от номера или Входящий звонок\n{{message}} — текст SMS/уведомления или номер звонка с подписью\n{{number}} — номер отправителя/звонящего\n{{sim}} — SIM для SMS/звонка, если доступна\n{{app}} — название приложения\n{{package}} — пакет приложения\n\nНедоступные значения пустые. Переносы строк сохраняются. HTML/Markdown автоматически не включается. Тесты соединения отправляют свой технический текст; для шаблона используйте Предпросмотр. Нажмите Сохранить настройки для применения к новым событиям.").setPositiveButton("Понятно",null).show();}
+    private void templateHelp(){dialogBuilder().setTitle("Переменные сообщений").setMessage("{{time}} — дата и время с часовым поясом\n{{date}} — дата\n{{type}} — тип события\n{{data}} — все данные события, включая отправителя/SIM или приложение\n{{title}} — заголовок уведомления, SMS от номера или Входящий звонок\n{{message}} — текст SMS/уведомления или номер звонка с подписью\n{{number}} — номер отправителя/звонящего\n{{sim}} — SIM для SMS/звонка, если доступна\n{{app}} — название приложения\n{{package}} — пакет приложения\n\nНедоступные значения пустые. Переносы строк сохраняются. HTML/Markdown автоматически не включается. Тесты соединения отправляют свой технический текст; для шаблона используйте Предпросмотр. Нажмите Сохранить настройки для применения к новым событиям.").setPositiveButton("Понятно",null).show();}
     private String previewMessage(String template,Map<String,String> values){
         try{return MessageTemplate.render(template,values);}catch(IllegalArgumentException e){return "[Для этого типа событий текст пустой. Добавьте {{data}} или {{message}}.]";}
     }
@@ -292,7 +292,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         try{String template=templateField.getText().toString();MessageTemplate.validate(template);long now=System.currentTimeMillis();String sms=previewMessage(template,MessageTemplate.values("SMS","SMS от +70000000000","Пример SMS","От: +70000000000\nSIM: Sim 1 MTS\nПример SMS","+70000000000","Sim 1 MTS","","",now));
             String call=previewMessage(template,MessageTemplate.values("Входящий звонок","Входящий звонок","Номер: +70000000000","SIM: Sim 1 MTS\nНомер: +70000000000","+70000000000","Sim 1 MTS","","",now));
             String push=previewMessage(template,MessageTemplate.values("Уведомление","Новое сообщение","Пример уведомления","Signal (org.thoughtcrime.securesms)\nНовое сообщение\nПример уведомления","","","Signal","org.thoughtcrime.securesms",now));
-            TextView content=new TextView(this);content.setTextColor(UiColors.TEXT);content.setTextSize(14);content.setTextIsSelectable(true);content.setPadding(dp(16),dp(12),dp(16),dp(12));content.setText("SMS\n"+sms+"\n\nЗВОНОК\n"+call+"\n\nУВЕДОМЛЕНИЕ\n"+push);ScrollView view=new ScrollView(this);view.addView(content);new AlertDialog.Builder(this).setTitle("Предпросмотр · пример данных").setView(view).setPositiveButton("Закрыть",null).show();
+            TextView content=new TextView(this);content.setTextColor(UiColors.TEXT);content.setTextSize(14);content.setTextIsSelectable(true);content.setPadding(dp(16),dp(12),dp(16),dp(12));content.setText("SMS\n"+sms+"\n\nЗВОНОК\n"+call+"\n\nУВЕДОМЛЕНИЕ\n"+push);ScrollView view=new ScrollView(this);view.addView(content);dialogBuilder().setTitle("Предпросмотр · пример данных").setView(view).setPositiveButton("Закрыть",null).show();
         }catch(IllegalArgumentException e){toast(e.getMessage());}
     }
     private void copySmtpLog(){
@@ -307,14 +307,14 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         try{startActivity(intent);}catch(ActivityNotFoundException|SecurityException e){openAppSettings();toast("Откройте Батарея → Без ограничений / Разрешить работу в фоне");}
     }
     private void manageUnusedApp(){
-        new AlertDialog.Builder(this).setTitle("Приостановка неиспользуемого приложения")
+        dialogBuilder().setTitle("Приостановка неиспользуемого приложения")
             .setMessage("В карточке RelayBridge отключите «Приостановить работу, если приложение не используется» или «Приостановить в неактивный период». Это также предотвращает автоматический отзыв разрешений при долгом неиспользовании. Изменение доступно в системных настройках.")
             .setPositiveButton("Открыть настройки",(d,w)->openAppSettings()).setNegativeButton("Закрыть",null).show();
     }
     private void showSmtpLog(){
         TextView content=new TextView(this);content.setTextColor(UiColors.TEXT);content.setTypeface(Typeface.MONOSPACE);content.setTextSize(12);content.setTextIsSelectable(true);content.setPadding(dp(14),dp(10),dp(14),dp(10));
         ScrollView view=new ScrollView(this);view.addView(content);
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Лог SMTP · этапы и коды").setView(view).setPositiveButton("Закрыть",null).setNegativeButton("Копировать",null).setNeutralButton("Очистить",(d,w)->SmtpLog.clear()).create();
+        AlertDialog dialog=dialogBuilder().setTitle("Лог SMTP · этапы и коды").setView(view).setPositiveButton("Закрыть",null).setNegativeButton("Копировать",null).setNeutralButton("Очистить",(d,w)->SmtpLog.clear()).create();
         Runnable update=new Runnable(){public void run(){if(!dialog.isShowing()||isDestroyed())return;content.setText(SmtpLog.snapshot());handler.postDelayed(this,1000);}};
         dialog.setOnDismissListener(d->handler.removeCallbacks(update));dialog.show();dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->copySmtpLog());handler.post(update);
     }
@@ -341,13 +341,13 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         try{
             Config next=readForm(email.isChecked());next.validate();
             boolean ready=(next.sms&&granted(Manifest.permission.RECEIVE_SMS))||(next.calls&&granted(Manifest.permission.READ_PHONE_STATE))||(next.pushes&&listenerGranted()&&!next.apps.isEmpty());
-            if(!ready){new AlertDialog.Builder(this).setTitle("Нет готового источника")
+            if(!ready){dialogBuilder().setTitle("Нет готового источника")
                 .setMessage("Выдайте доступ хотя бы к одному включённому источнику. Для push также выберите приложения. Тесты отправки доступны без разрешений.")
                 .setPositiveButton("Разрешения Android",(d,w)->permissionHelp()).setNegativeButton("Закрыть",null).show();return;}
             String missing="";if(next.sms&&!granted(Manifest.permission.RECEIVE_SMS))missing+="\nSMS пока не будут пересылаться.";
             if(next.calls&&!granted(Manifest.permission.READ_PHONE_STATE))missing+="\nСобытия звонков пока недоступны.";
             if(next.pushes&&(!listenerGranted()||next.apps.isEmpty()))missing+="\nУведомления пока не настроены.";
-            new AlertDialog.Builder(this).setTitle("Включить пересылку?")
+            dialogBuilder().setTitle("Включить пересылку?")
                 .setMessage("Новые события разрешённых источников уйдут указанным вами получателям. Подтвердите передачу SMS, номера звонящего и/или текста выбранных уведомлений."+missing)
                 .setPositiveButton("Включить",(d,w)->save(true)).setNegativeButton("Отмена",null).show();
         }catch(IllegalArgumentException e){toast(e.getMessage());}
@@ -362,10 +362,10 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         ImageView icon=new ImageView(this);icon.setImageDrawable(new UiIcon(8,UiColors.ACCENT,getResources().getDisplayMetrics().density));LinearLayout.LayoutParams image=new LinearLayout.LayoutParams(dp(20),dp(24));image.rightMargin=dp(10);row.addView(icon,image);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
         TextView title=new TextView(this);title.setTextSize(12);title.setTextColor(UiColors.TEXT);title.setIncludeFontPadding(false);title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));title.setLineSpacing(dp(2),1);words.addView(title,new LinearLayout.LayoutParams(-1,-2));
-        TextView detail=new TextView(this);detail.setTextSize(11);detail.setTextColor(UiColors.MUTED);detail.setIncludeFontPadding(false);detail.setLineSpacing(dp(2),1);LinearLayout.LayoutParams caption=new LinearLayout.LayoutParams(-1,-2);caption.topMargin=dp(4);words.addView(detail,caption);if(forCalls)callSimDetails=detail;else simDetails=detail;return title;
+        TextView detail=new TextView(this);detail.setTextSize(11);detail.setTextColor(UiColors.ACCENT);detail.setGravity(Gravity.CENTER);detail.setIncludeFontPadding(false);detail.setLineSpacing(dp(2),1);LinearLayout.LayoutParams caption=new LinearLayout.LayoutParams(-1,-2);caption.topMargin=dp(4);words.addView(detail,caption);if(forCalls)callSimDetails=detail;else simDetails=detail;return title;
     }
     private void updateSimSummary(TextView summary,String source,boolean all,Set<Integer> selected){
-        if(summary==null)return;TextView detail=source.equals("SMS")?simDetails:callSimDetails;summary.setTextColor(UiColors.TEXT);detail.setTextColor(UiColors.MUTED);
+        if(summary==null)return;TextView detail=source.equals("SMS")?simDetails:callSimDetails;summary.setTextColor(UiColors.TEXT);detail.setTextColor(UiColors.ACCENT);detail.setGravity(Gravity.CENTER);
         if(all){summary.setText("Все SIM-карты");detail.setText("Автовыбор · включая новые SIM и eSIM");return;}
         if(selected.isEmpty()){summary.setText("SIM-карты не выбраны");detail.setText(source.equals("SMS")?"Захват SMS отключён":"Захват звонков отключён");return;}
         List<String> names=new ArrayList<>();for(SimCards.Card card:SimCards.active(this))if(selected.contains(card.id))names.add(card.label);
@@ -378,7 +378,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private void chooseSims(){chooseSims(false);}
     private void chooseSims(boolean forCalls){
         if(!SimCards.permitted(this)){
-            new AlertDialog.Builder(this).setTitle("Доступ к SIM-картам").setMessage("Для списка SIM и названия оператора разрешите доступ к состоянию телефона. После разрешения откроется выбор SIM.")
+            dialogBuilder().setTitle("Доступ к SIM-картам").setMessage("Для списка SIM и названия оператора разрешите доступ к состоянию телефона. После разрешения откроется выбор SIM.")
                 .setPositiveButton("Разрешить",(d,w)->requestAccess(forCalls?PermissionRequests.CALL_SIM_PHONE:PermissionRequests.SIM_PHONE)).setNegativeButton("Отмена",null).show();return;
         }
         boolean allSelected=forCalls?cfg.callAllSims:cfg.smsAllSims;
@@ -387,10 +387,10 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         CheckBox all=new CheckBox(this);all.setText("Все SIM-карты, включая новые");all.setTextColor(UiColors.TEXT);all.setButtonTintList(choiceTint());all.setChecked(allSelected);content.addView(all);
         List<CheckBox> choices=new ArrayList<>();for(SimCards.Card card:cards){CheckBox choice=new CheckBox(this);choice.setText(card.label);choice.setTextColor(UiColors.TEXT);choice.setButtonTintList(choiceTint());choice.setChecked(allSelected||selectedIds.contains(card.id));choice.setEnabled(!all.isChecked());content.addView(choice);choices.add(choice);}
         all.setOnCheckedChangeListener((v,on)->{for(CheckBox choice:choices)choice.setEnabled(!on);});
-        TextView hint=new TextView(this);hint.setTextColor(UiColors.MUTED);hint.setTextSize(13);hint.setPadding(0,dp(12),0,0);
+        TextView hint=new TextView(this);hint.setTextColor(UiColors.ACCENT);hint.setTextSize(13);hint.setPadding(0,dp(12),0,0);
         hint.setText("Отключите «Все SIM-карты» и отметьте нужные. Без выбора захват этого источника отключён. После замены SIM или eSIM проверьте выбор снова."+(forCalls?" Если Android не сообщает SIM звонка и её нельзя однозначно определить, при выборе отдельных SIM звонок будет пропущен.":"")+(cards.isEmpty()?" Активные SIM не найдены.":""));content.addView(hint);
         ScrollView view=new ScrollView(this);view.addView(content);
-        new AlertDialog.Builder(this).setTitle(forCalls?"SIM для захвата звонков":"SIM для захвата SMS").setView(view).setPositiveButton("Сохранить выбор",(d,w)->{
+        dialogBuilder().setTitle(forCalls?"SIM для захвата звонков":"SIM для захвата SMS").setView(view).setPositiveButton("Сохранить выбор",(d,w)->{
             try{Set<Integer> selected=new HashSet<>();if(!all.isChecked())for(int n=0;n<cards.size();n++)if(choices.get(n).isChecked())selected.add(cards.get(n).id);
                 Config stored=Config.load(this);
                 if(forCalls){stored.callAllSims=all.isChecked();stored.callSubscriptions.clear();stored.callSubscriptions.addAll(selected);cfg.callAllSims=stored.callAllSims;cfg.callSubscriptions.clear();cfg.callSubscriptions.addAll(selected);}
@@ -418,7 +418,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         ListView list=new ListView(this);int height=Math.min(dp(440),getResources().getDisplayMetrics().heightPixels/2);layout.addView(list,new LinearLayout.LayoutParams(-1,height));
         Set<String> selected=new HashSet<>(cfg.apps);AppsAdapter adapter=new AppsAdapter(all,selected,count);list.setAdapter(adapter);adapter.updateCount();
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){adapter.filter(s.toString());}public void afterTextChanged(Editable e){}});
-        appDialog=new AlertDialog.Builder(this).setTitle("Приложения для пересылки").setView(layout).setPositiveButton("Сохранить выбор",(d,w)->{
+        appDialog=dialogBuilder().setTitle("Приложения для пересылки").setView(layout).setPositiveButton("Сохранить выбор",(d,w)->{
             try{Config stored=Config.load(this);stored.apps.clear();stored.apps.addAll(selected);stored.save(this);cfg.apps.clear();cfg.apps.addAll(selected);appsButton.setText("Приложения · "+cfg.apps.size());updateStatus();toast("Выбор приложений сохранён");}
             catch(Exception e){toast("Не удалось сохранить выбор");}
         }).setNegativeButton("Отмена",null).show();
@@ -461,9 +461,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,first),q=new LinearLayout.LayoutParams(0,-2,second);q.leftMargin=dp(8);row.addView(a,p);row.addView(b,q);
         try{area=a;left.run();area=b;right.run();}finally{area=parent;}
     }
-    private void title(String text,int size){TextView label=note(text);label.setIncludeFontPadding(false);label.setTextSize(size);label.setTextColor(UiColors.TEXT);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,0,0,dp(4));}
+    private void title(String text,int size){TextView label=note(text);label.setIncludeFontPadding(false);label.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);label.setTextSize(size);label.setTextColor(UiColors.TEXT);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,0,0,dp(4));}
     private void section(String caption){
-        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setTextSize(11);if(sectionTab==1&&!caption.equals("Источники"))heading.setTextColor(UiColors.TEXT);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
+        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);heading.setTextSize(11);if(sectionTab==1&&!caption.equals("Источники"))heading.setTextColor(UiColors.TEXT);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(14),dp(16),dp(14));UiLayout.background(card,border(UiColors.SURFACE));page.addView(card,new LinearLayout.LayoutParams(-1,-2));sections.add(heading);sectionTabs.add(sectionTab);sections.add(card);sectionTabs.add(sectionTab);area=card;
     }
     private void selectTab(int tab){
@@ -473,9 +473,18 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         scroll.smoothScrollTo(0,0);if(tab==3&&history!=null)history.refresh();
     }
     private GradientDrawable border(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(16));d.setStroke(dp(1),UiColors.BORDER);return d;}
-    private TextView formLabel(String text){TextView label=note(text);label.setTextColor(UiColors.TEXT);label.setTextSize(12);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,dp(10),0,dp(6));return label;}
-    private TextView formHelp(String text){TextView hint=note(text);hint.setTextColor(UiColors.TEXT);hint.setTextSize(11);hint.setLineSpacing(dp(2),1);hint.setPadding(0,dp(4),0,dp(10));return hint;}
-    private TextView note(String text){TextView t=new TextView(this);t.setIncludeFontPadding(false);t.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.MUTED);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t);return t;}
+    private AlertDialog.Builder dialogBuilder(){
+        return new AlertDialog.Builder(this){
+            @Override public AlertDialog create(){
+                AlertDialog dialog=super.create();
+                dialog.setOnShowListener(ignored->{TextView message=dialog.findViewById(android.R.id.message);if(message!=null){message.setTextColor(UiColors.ACCENT);if(selectedTab==1)message.setGravity(Gravity.CENTER);}});
+                return dialog;
+            }
+        };
+    }
+    private TextView formLabel(String text){TextView label=note(text);label.setTextColor(UiColors.TEXT);label.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);label.setTextSize(12);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,dp(10),0,dp(6));return label;}
+    private TextView formHelp(String text){TextView hint=note(text);hint.setTextColor(UiColors.ACCENT);hint.setTextSize(11);hint.setLineSpacing(dp(2),1);hint.setPadding(0,dp(4),0,dp(10));return hint;}
+    private TextView note(String text){TextView t=new TextView(this);t.setIncludeFontPadding(false);t.setGravity(sectionTab==1?Gravity.CENTER:Gravity.START|Gravity.CENTER_VERTICAL);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.ACCENT);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t,new LinearLayout.LayoutParams(-1,-2));return t;}
     private CompoundButton check(String text,boolean value){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(56));row.setPadding(0,dp(8),0,dp(8));area.addView(row,new LinearLayout.LayoutParams(-1,-2));
         int kind=text.contains("SMS")?4:text.contains("звон")?5:text.equals("Уведомления")?6:text.equals("Telegram")?1:text.equals("Email / SMTP")?7:-1;
@@ -499,7 +508,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
     private EditText field(String label,String value,boolean secret){
-        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.TEXT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.ACCENT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         if(secret){input.setTransformationMethod(PasswordTransformationMethod.getInstance());input.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);input.setSaveEnabled(false);}
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);area.addView(input,lp);return input;
     }

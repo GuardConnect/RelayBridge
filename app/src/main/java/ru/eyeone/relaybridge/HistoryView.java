@@ -28,11 +28,11 @@ final class HistoryView extends LinearLayout {
     private long loadedRevision=-1,loadedAt;
     HistoryView(Activity c){
         super(c);activity=c;setOrientation(VERTICAL);
-        summary=text("Загрузка журнала…",12);summary.setTextColor(UiColors.MUTED);
+        summary=text("Загрузка журнала…",12);summary.setTextColor(UiColors.ACCENT);
         String[] labels={"Все","Доставлено","В очереди","Ошибки"};
         LinearLayout metrics=new LinearLayout(c);metrics.setPadding(dp(4),dp(4),dp(4),dp(4));UiLayout.background(metrics,background(UiColors.SURFACE,UiColors.BORDER));addView(metrics,new LayoutParams(-1,-2));
         for(int i=0;i<4;i++){final int index=i;LinearLayout metric=new LinearLayout(c);metricViews[i]=metric;metric.setOrientation(VERTICAL);metric.setGravity(Gravity.CENTER);metric.setPadding(dp(2),dp(10),dp(2),dp(10));metric.setMinimumHeight(dp(64));metrics.addView(metric,new LayoutParams(0,-2,1));counters[i]=text("0",22);counters[i].setTypeface(null,Typeface.BOLD);metric.addView(counters[i]);metricCaptions[i]=text(labels[i],10);metricCaptions[i].setGravity(Gravity.CENTER);metricCaptions[i].setMaxLines(2);metricCaptions[i].setPadding(0,0,0,0);metricCaptions[i].setLayoutParams(new LayoutParams(-1,dp(Math.round(24*Math.max(1,getResources().getConfiguration().fontScale)))));counters[i].setPadding(0,0,0,0);counters[i].setGravity(Gravity.CENTER);metric.addView(metricCaptions[i]);metric.setFocusable(true);metric.setOnClickListener(v->{selectedFilter=index;limit=50;render();});}
-        search=new EditText(c);search.setHint("Поиск по событиям");search.setSingleLine();search.setTextSize(14);search.setTextColor(UiColors.TEXT);search.setHintTextColor(UiColors.MUTED);search.setPadding(dp(12),0,dp(12),0);UiLayout.background(search,background(UiColors.FIELD,UiColors.BORDER));LayoutParams searchLp=new LayoutParams(-1,dp(48));searchLp.topMargin=dp(10);addView(search,searchLp);
+        search=new EditText(c);search.setHint("Поиск по событиям");search.setSingleLine();search.setTextSize(14);search.setTextColor(UiColors.TEXT);search.setHintTextColor(UiColors.ACCENT);search.setPadding(dp(12),0,dp(12),0);UiLayout.background(search,background(UiColors.FIELD,UiColors.BORDER));LayoutParams searchLp=new LayoutParams(-1,dp(48));searchLp.topMargin=dp(10);addView(search,searchLp);
         LinearLayout types=new LinearLayout(c);LayoutParams typeLp=new LayoutParams(-1,-2);typeLp.topMargin=dp(10);typeLp.bottomMargin=dp(12);addView(types,typeLp);String[] names={"SMS","Звонки","Уведомления"};
         for(int i=0;i<3;i++){final int index=i;Button button=new Button(c);typeButtons[i]=button;button.setText(names[i]);button.setAllCaps(false);button.setTextSize(11);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setMinimumWidth(0);button.setMinWidth(0);button.setPadding(dp(4),0,dp(4),0);LayoutParams lp=new LayoutParams(0,dp(44),1);if(i>0)lp.leftMargin=dp(6);types.addView(button,lp);button.setOnClickListener(v->{typeFilter=typeFilter==index?-1:index;limit=50;render();});}
         summary.setVisibility(GONE);addView(summary);
@@ -73,7 +73,7 @@ final class HistoryView extends LinearLayout {
             card.setFocusable(true);card.setContentDescription(r.kind+", Telegram "+QueueDb.label(r.tg)+", Email "+QueueDb.label(r.mail)+". Открыть подробности");card.setOnClickListener(v->details(r));
         }
         if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setTextColor(UiColors.MUTED);more.setBackgroundColor(UiColors.BACKGROUND);more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
-        if(shown==0){TextView empty=text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14);empty.setGravity(Gravity.CENTER);empty.setTextColor(UiColors.MUTED);empty.setPadding(dp(20),dp(32),dp(20),dp(32));cards.addView(empty,new LayoutParams(-1,-2));}
+        if(shown==0){TextView empty=text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14);empty.setGravity(Gravity.CENTER);empty.setTextColor(UiColors.ACCENT);empty.setPadding(dp(20),dp(32),dp(20),dp(32));cards.addView(empty,new LayoutParams(-1,-2));}
     }
     static String displayTitle(QueueDb.HistoryRow r){
         if(!r.body.startsWith("RelayBridge · "))return r.kind;int start=r.body.indexOf("\n\n");if(start<0)return r.kind;String data=r.body.substring(start+2);

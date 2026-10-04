@@ -9,7 +9,7 @@
 <item name="android:colorBackground">#000000</item>
 <item name="android:windowBackground">#000000</item>
 <item name="android:textColorPrimary">#FFFFFF</item>
-<item name="android:textColorSecondary">#9B9BA5</item>
+<item name="android:textColorSecondary">#00A7F5</item>
 <item name="android:colorControlNormal">#9B9BA5</item>
 <item name="android:windowActionModeOverlay">true</item>
 <item name="android:forceDarkAllowed">false</item>
