@@ -148,13 +148,20 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         linkRow("Карточка приложения","",this::openAppSettings,2);
         linkRow("Почему Android блокирует разрешения?","",this::permissionHelp,2);
     }
+    private void grantedRow(String label){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(60));row.setPadding(0,dp(10),0,dp(10));grantedAccess.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        ImageView check=new ImageView(this);check.setImageDrawable(new UiToggleArtwork(UiToggleArtwork.BADGE,getResources().getDisplayMetrics().density));row.addView(check,new LinearLayout.LayoutParams(dp(36),dp(36)));check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        TextView text=new TextView(this);text.setText(label);text.setTextColor(UiColors.TEXT);text.setTextSize(14);text.setIncludeFontPadding(false);text.setGravity(Gravity.CENTER);text.setLineSpacing(dp(2),1);LinearLayout.LayoutParams words=new LinearLayout.LayoutParams(0,-2,1);words.leftMargin=dp(8);words.rightMargin=dp(8);row.addView(text,words);
+        View balance=new View(this);balance.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(balance,new LinearLayout.LayoutParams(dp(36),dp(1)));
+        View line=new View(this);line.setBackgroundColor(UiColors.BORDER);grantedAccess.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+    }
     private void updateAccess(boolean[] flags){
         String key=Arrays.toString(flags)+RelayListener.connected;if(key.equals(accessSignature))return;accessSignature=key;
         missingAccess.removeAllViews();grantedAccess.removeAllViews();LinearLayout old=area;
         String[] labels={"Получение SMS","Состояние телефона и SIM","Журнал звонков","Доступ к уведомлениям","Уведомления приложения","Уведомление о работе","Работа без ограничений"};
         String[] hints={"Для новых входящих SMS.","Для звонков и выбора SIM.","Для номера входящего звонка. Без него номер может быть недоступен.","Для уведомлений выбранных приложений.","Для отображения состояния RelayBridge.","Разрешите уведомления RelayBridge и канал состояния.","Исключение из оптимизации батареи для фоновой доставки."};
         Runnable[] actions={()->requestAccess(PermissionRequests.SMS),()->requestAccess(PermissionRequests.PHONE),()->requestAccess(PermissionRequests.CALL_LOG),()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),()->requestAccess(PermissionRequests.STATUS),this::openStatusNotificationSettings,this::requestUnrestrictedBackground};
-        int count=0;for(int i=0;i<flags.length;i++){if(flags[i]){count++;area=grantedAccess;TextView row=note("✓  "+labels[i]+(i==3&&RelayListener.connected?" · подключена":""));row.setTextColor(UiColors.TEXT);row.setTextSize(15);row.setPadding(0,dp(14),0,dp(14));divider();}else{LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));UiLayout.background(card,border(UiColors.SURFACE));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);missingAccess.addView(card,lp);area=card;title(labels[i],17);note(hints[i]);makeButton("Разрешить",actions[i],true);}}
+        int count=0;for(int i=0;i<flags.length;i++){if(flags[i]){count++;grantedRow(labels[i]+(i==3&&RelayListener.connected?" · подключена":""));}else{LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));UiLayout.background(card,border(UiColors.SURFACE));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);missingAccess.addView(card,lp);area=card;title(labels[i],17);note(hints[i]);makeButton("Разрешить",actions[i],true);}}
         if(count==7){area=missingAccess;note("Все разрешения выданы");}if(count==0){area=grantedAccess;note("Выданных разрешений пока нет");}
         accessCount.setText(count==7?"Всё готово · 7 / 7":"Осталось "+(7-count)+" · "+count+" / 7");for(int i=0;i<7;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
     }
