@@ -39,7 +39,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private long overviewRevision=-1;private boolean overviewLoading;
     private final java.util.concurrent.ExecutorService overviewExecutor=Executors.newSingleThreadExecutor();
 
-    private LinearLayout simList,callSimList;
+    private LinearLayout simList,callSimList,selectedAppsList;
+    private TextView selectedAppsCount;
+    private int selectedAppsGeneration;
     private TextView status,journal,tgResult,mailResult,permissionStatus,overviewDetails,overviewReadiness;
     private CompoundButton sms,calls,pushes,ongoing,tg,email;
     private final TextView[] navLabels=new TextView[4];
@@ -109,7 +111,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         secondary("SIM для звонков",()->chooseSims(true));callSimList=simStatus();updateSimSummary();
         divider();pushes=check("Уведомления",cfg.pushes);
         
-        appsButton=secondary("Приложения · "+cfg.apps.size(),this::chooseApps);ongoing=check("Включать постоянные уведомления",cfg.ongoing);
+        appsButton=secondary("Выберите приложения из списка установленных",this::chooseApps);
+        selectedAppsCount=note("");selectedAppsList=new LinearLayout(this);selectedAppsList.setOrientation(LinearLayout.VERTICAL);area.addView(selectedAppsList,new LinearLayout.LayoutParams(-1,-2));updateSelectedApps();
+        ongoing=check("Включать постоянные уведомления",cfg.ongoing);
 
         section("Получатели · Telegram");tg=check("Telegram",cfg.telegram);
         token=field("Токен бота",cfg.token,true);token.setHint("Токен от @BotFather");chat=field("Chat ID",cfg.chat,false);chat.setHint("Числовой ID или @имя_канала");
@@ -135,7 +139,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         pair(()->secondary("Предпросмотр",this::previewTemplate),()->secondary("По умолчанию",()->templateField.setText(MessageTemplate.DEFAULT)),1,1);
         formLabel("Добавить переменную");
         LinearLayout parent=area;LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.VERTICAL);parent.addView(chips);String[] variables={"time","date","type","data","title","message","number","sim","app","package"};
-        for(int row=0;row<(variables.length+1)/2;row++){LinearLayout line=new LinearLayout(this);line.setBaselineAligned(false);chips.addView(line,new LinearLayout.LayoutParams(-1,-2));for(int j=row*2;j<Math.min(variables.length,row*2+2);j++){String value="{{"+variables[j]+"}}";TextView chip=new TextView(this);chip.setText(value);chip.setTextColor(UiColors.TEXT);chip.setTextSize(12);chip.setIncludeFontPadding(false);chip.setGravity(Gravity.CENTER);chip.setTypeface(Typeface.MONOSPACE);chip.setPadding(dp(8),dp(8),dp(8),dp(8));chip.setMinHeight(dp(40));UiLayout.background(chip,border(UiColors.SUCCESS_BG));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);if(j%2==0)lp.rightMargin=dp(6);lp.topMargin=dp(6);line.addView(chip,lp);chip.setOnClickListener(v->{int start=Math.max(0,templateField.getSelectionStart()),end=Math.max(start,templateField.getSelectionEnd());templateField.getText().replace(start,end,value);});}}
+        for(int row=0;row<(variables.length+1)/2;row++){LinearLayout line=new LinearLayout(this);line.setBaselineAligned(false);chips.addView(line,new LinearLayout.LayoutParams(-1,-2));for(int j=row*2;j<Math.min(variables.length,row*2+2);j++){String value="{{"+variables[j]+"}}";TextView chip=new TextView(this);chip.setText(value);chip.setTextColor(UiColors.TEXT);chip.setTextSize(12);chip.setIncludeFontPadding(false);chip.setGravity(Gravity.CENTER);chip.setTypeface(Typeface.MONOSPACE);chip.setPadding(dp(8),dp(8),dp(8),dp(8));chip.setMinHeight(dp(40));UiLayout.background(chip,border(UiColors.ACCENT));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);if(j%2==0)lp.rightMargin=dp(6);lp.topMargin=dp(6);line.addView(chip,lp);chip.setOnClickListener(v->{int start=Math.max(0,templateField.getSelectionStart()),end=Math.max(start,templateField.getSelectionEnd());templateField.getText().replace(start,end,value);});}}
         formHelp("Нажмите переменную, чтобы вставить её в позицию курсора.");
         secondary("Справка по переменным",this::templateHelp);
         section(" ");button("Сохранить настройки",()->save(false));
@@ -182,7 +186,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     @Override public Object onRetainCustomNonConfigurationInstance(){
         if(token==null)return null;Draft d=new Draft();d.config=readForm(false);d.port=port.getText().toString();d.scroll=scroll.getScrollY();d.tab=selectedTab;return d;
     }
-    @Override protected void onResume(){super.onResume();if(status!=null){try{Indicator.update(this,Config.load(this).enabled);}catch(Exception ignored){}updateSimSummary();handler.removeCallbacks(refresh);handler.post(refresh);if(listenerGranted()&&!RelayListener.connected)rebindQuietly();}}
+    @Override protected void onResume(){super.onResume();if(status!=null){try{Indicator.update(this,Config.load(this).enabled);}catch(Exception ignored){}updateSimSummary();updateSelectedApps();handler.removeCallbacks(refresh);handler.post(refresh);if(listenerGranted()&&!RelayListener.connected)rebindQuietly();}}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
     @Override protected void onSaveInstanceState(Bundle out){out.putInt("permission-request",pendingPermissionRequest);super.onSaveInstanceState(out);}
     private void requestAccess(int request){
@@ -257,7 +261,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);syncRelayToggle(cfg.enabled);relayMode.setText(cfg.enabled?"ВКЛ":"ВЫКЛ");relayToggle.setContentDescription(cfg.enabled?"Выключить пересылку":"Включить пересылку");
             recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
-            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(channelReady&&missing.isEmpty()?UiColors.SUCCESS:UiColors.PENDING);
+            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(UiColors.MUTED);recipientSummary.setTextColor(UiColors.MUTED);sourceSummary.setTextColor(UiColors.MUTED);
             updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName())});
             long last=Config.prefs(this).getLong("last-capture",0);
             String received=last>0?"Последнее событие: "+android.text.format.DateFormat.format("dd.MM HH:mm:ss",last)+"\n\n":"Новых событий в очереди пока нет.\n\n";
@@ -415,6 +419,35 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             }catch(Exception e){toast("Не удалось сохранить выбор SIM");}
         }).setNegativeButton("Отмена",null).show();
     }
+    private void updateSelectedApps(){
+        if(selectedAppsList==null||overviewExecutor.isShutdown())return;
+        Set<String> packages=new HashSet<>(cfg.apps);int generation=++selectedAppsGeneration;
+        selectedAppsCount.setText("Выбрано приложений: "+packages.size());
+        if(packages.isEmpty()){renderSelectedApps(Collections.emptyList());return;}
+        overviewExecutor.execute(()->{
+            List<AppRow> rows=new ArrayList<>();
+            for(String pkg:packages){ApplicationInfo info;String label;
+                try{info=getPackageManager().getApplicationInfo(pkg,0);label=info.loadLabel(getPackageManager()).toString();}
+                catch(Exception unavailable){info=new ApplicationInfo();info.packageName=pkg;label="Приложение недоступно";}
+                rows.add(new AppRow(info,label));
+            }
+            rows.sort(Comparator.comparing((AppRow app)->app.label.toLowerCase(Locale.ROOT)).thenComparing(app->app.info.packageName));
+            runOnUiThread(()->{if(!isDestroyed()&&generation==selectedAppsGeneration)renderSelectedApps(rows);});
+        });
+    }
+    private void renderSelectedApps(List<AppRow> apps){
+        selectedAppsList.removeAllViews();
+        if(apps.isEmpty()){
+            TextView hint=new TextView(this);hint.setText("Приложения для пересылки уведомлений ещё не выбраны.");hint.setTextColor(UiColors.MUTED);hint.setTextSize(12);hint.setIncludeFontPadding(false);hint.setGravity(Gravity.CENTER);hint.setPadding(dp(8),dp(4),dp(8),dp(8));selectedAppsList.addView(hint,new LinearLayout.LayoutParams(-1,-2));return;
+        }
+        for(AppRow app:apps){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));UiLayout.background(row,border(UiColors.SUCCESS_BG));LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(6);card.bottomMargin=dp(4);selectedAppsList.addView(row,card);
+            ImageView icon=new ImageView(this);Drawable drawable;try{drawable=app.info.loadIcon(getPackageManager());}catch(Exception ignored){drawable=getPackageManager().getDefaultActivityIcon();}icon.setImageDrawable(drawable);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams image=new LinearLayout.LayoutParams(dp(32),dp(32));image.rightMargin=dp(12);row.addView(icon,image);
+            LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+            TextView name=new TextView(this);name.setText(app.label);name.setTextColor(UiColors.TEXT);name.setTextSize(14);name.setIncludeFontPadding(false);name.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));words.addView(name,new LinearLayout.LayoutParams(-1,-2));
+            TextView pkg=new TextView(this);pkg.setText(app.info.packageName);pkg.setTextColor(UiColors.MUTED);pkg.setTextSize(11);pkg.setTypeface(Typeface.MONOSPACE);pkg.setIncludeFontPadding(false);pkg.setTextDirection(View.TEXT_DIRECTION_LTR);pkg.setPadding(0,dp(4),0,0);words.addView(pkg,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
     private void chooseApps(){
         appsButton.setEnabled(false);var executor=Executors.newSingleThreadExecutor();
         executor.execute(()->{List<AppRow> all=new ArrayList<>();
@@ -435,7 +468,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         Set<String> selected=new HashSet<>(cfg.apps);AppsAdapter adapter=new AppsAdapter(all,selected,count);list.setAdapter(adapter);adapter.updateCount();
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){adapter.filter(s.toString());}public void afterTextChanged(Editable e){}});
         appDialog=dialogBuilder().setTitle("Приложения для пересылки").setView(layout).setPositiveButton("Сохранить выбор",(d,w)->{
-            try{Config stored=Config.load(this);stored.apps.clear();stored.apps.addAll(selected);stored.save(this);cfg.apps.clear();cfg.apps.addAll(selected);appsButton.setText("Приложения · "+cfg.apps.size());updateStatus();toast("Выбор приложений сохранён");}
+            try{Config stored=Config.load(this);stored.apps.clear();stored.apps.addAll(selected);stored.save(this);cfg.apps.clear();cfg.apps.addAll(selected);updateSelectedApps();updateStatus();toast("Выбор приложений сохранён");}
             catch(Exception e){toast("Не удалось сохранить выбор");}
         }).setNegativeButton("Отмена",null).show();
     }
@@ -493,7 +526,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         return new AlertDialog.Builder(this){
             @Override public AlertDialog create(){
                 AlertDialog dialog=super.create();
-                dialog.setOnShowListener(ignored->{TextView message=dialog.findViewById(android.R.id.message);if(message!=null){if(selectedTab==1)message.setGravity(Gravity.CENTER);}});
+                dialog.setOnShowListener(ignored->{UiLayout.styleDialogButtons(dialog);TextView message=dialog.findViewById(android.R.id.message);if(message!=null){if(selectedTab==1)message.setGravity(Gravity.CENTER);}});
                 return dialog;
             }
         };
@@ -519,7 +552,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private Spinner segments(String[] values,String selected){
         Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));int pos=Arrays.asList(values).indexOf(selected);spinner.setSelection(Math.max(0,pos));spinner.setVisibility(View.GONE);area.addView(spinner);
         LinearLayout row=new LinearLayout(this);row.setPadding(dp(3),dp(3),dp(3),dp(3));UiLayout.background(row,border(UiColors.FIELD));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(10);area.addView(row,lp);
-        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(UiColors.TEXT);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
+        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(UiColors.TEXT);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.BUTTON_IDLE));}};
         for(int k=0;k<values.length;k++){final int index=k;Button button=new Button(this);button.setText(values[k]);button.setTextSize(11);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setAllCaps(false);button.setPadding(0,0,0,0);button.setMinWidth(0);button.setMinimumWidth(0);row.addView(button,new LinearLayout.LayoutParams(0,-1,1));button.setOnClickListener(v->{spinner.setSelection(index);paint.run();});}paint.run();return spinner;
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
@@ -530,5 +563,5 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private Button button(String caption,Runnable action){return makeButton(caption,action,sectionTab!=2);}
     private Button secondary(String caption,Runnable action){return makeButton(caption,action,false);}
-    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(UiColors.TEXT);UiLayout.background(button,new RippleDrawable(ColorStateList.valueOf(0x22777777),border(primary?UiColors.ACCENT:UiColors.SURFACE),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
+    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(UiColors.TEXT);UiLayout.background(button,new RippleDrawable(ColorStateList.valueOf(0x22777777),border(UiColors.ACCENT),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
 }

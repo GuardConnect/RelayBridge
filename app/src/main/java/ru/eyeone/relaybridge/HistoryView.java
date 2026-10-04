@@ -54,8 +54,8 @@ final class HistoryView extends LinearLayout {
         int delivered=0,pending=0,failed=0;
         for(var r:rows){if(r.tg==0||r.mail==0)pending++;if(r.tg==3||r.mail==3)failed++;if((r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3)delivered++;}
         int[] counts={rows.size(),delivered,pending,failed};for(int i=0;i<counts.length;i++)counters[i].setText(String.valueOf(counts[i]));
-        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.ACCENT:UiColors.SURFACE,on?UiColors.ACCENT:UiColors.SURFACE));counters[i].setTextColor(UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.TEXT:UiColors.MUTED);}
-        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.ACCENT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(UiColors.TEXT);}
+        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.ACCENT:UiColors.BUTTON_IDLE,on?UiColors.ACCENT:UiColors.BUTTON_IDLE));counters[i].setTextColor(UiColors.TEXT);metricCaptions[i].setTextColor(UiColors.TEXT);}
+        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.ACCENT:UiColors.BUTTON_IDLE,UiColors.BORDER));typeButtons[i].setTextColor(UiColors.TEXT);}
         UiLayout.background(cards,background(UiColors.SURFACE,UiColors.BORDER));
         cards.removeAllViews();String q=search.getText().toString().toLowerCase(Locale.ROOT);int selected=selectedFilter,shown=0;
         for(var r:rows){boolean done=(r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3;
@@ -72,7 +72,7 @@ final class HistoryView extends LinearLayout {
             TextView time=text(android.text.format.DateFormat.format("HH:mm\ndd.MM",r.created).toString(),11);time.setTypeface(Typeface.MONOSPACE);time.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);time.setTextColor(UiColors.MUTED);card.addView(time);
             card.setFocusable(true);card.setContentDescription(r.kind+", Telegram "+QueueDb.label(r.tg)+", Email "+QueueDb.label(r.mail)+". Открыть подробности");card.setOnClickListener(v->details(r));
         }
-        if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setTextColor(UiColors.MUTED);more.setBackgroundColor(UiColors.BACKGROUND);more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
+        if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setTextColor(UiColors.TEXT);UiLayout.background(more,background(UiColors.ACCENT,UiColors.ACCENT));more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
         if(shown==0){TextView empty=text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14);empty.setGravity(Gravity.CENTER);empty.setTextColor(UiColors.MUTED);empty.setPadding(dp(20),dp(32),dp(20),dp(32));cards.addView(empty,new LayoutParams(-1,-2));}
     }
     static String displayTitle(QueueDb.HistoryRow r){
@@ -84,9 +84,9 @@ final class HistoryView extends LinearLayout {
     private void details(QueueDb.HistoryRow r){
         TextView content=text(r.body+"\n\nTelegram: "+mark(r.tg)+"\nEmail: "+mark(r.mail)+"\n"+r.error,14);content.setTextIsSelectable(true);content.setPadding(dp(18),dp(8),dp(18),dp(8));
         ScrollView scroll=new ScrollView(activity);scroll.addView(content);
-        AlertDialog.Builder dialog=new AlertDialog.Builder(activity).setTitle(r.kind).setView(scroll).setPositiveButton("Закрыть",null)
-            .setNegativeButton("Удалить",(d,w)->new AlertDialog.Builder(activity).setMessage("Удалить событие и отменить оставшуюся доставку? Уже переданные данные останутся у получателей.").setPositiveButton("Удалить",(a,b)->{androidx.work.WorkManager.getInstance(activity).cancelUniqueWork("event-"+r.id);QueueDb.get(activity).deleteEvent(r.id);refresh();}).setNegativeButton("Отмена",null).show());
-        if(r.tg==3||r.mail==3)dialog.setNeutralButton("Повторить",(d,w)->new AlertDialog.Builder(activity).setMessage("Повторить отправку только с ошибками, используя сохранённые сейчас настройки? После сетевого сбоя возможен дубликат у получателя.").setPositiveButton("Повторить",(a,b)->{
+        AlertDialog.Builder dialog=UiLayout.dialogBuilder(activity).setTitle(r.kind).setView(scroll).setPositiveButton("Закрыть",null)
+            .setNegativeButton("Удалить",(d,w)->UiLayout.dialogBuilder(activity).setMessage("Удалить событие и отменить оставшуюся доставку? Уже переданные данные останутся у получателей.").setPositiveButton("Удалить",(a,b)->{androidx.work.WorkManager.getInstance(activity).cancelUniqueWork("event-"+r.id);QueueDb.get(activity).deleteEvent(r.id);refresh();}).setNegativeButton("Отмена",null).show());
+        if(r.tg==3||r.mail==3)dialog.setNeutralButton("Повторить",(d,w)->UiLayout.dialogBuilder(activity).setMessage("Повторить отправку только с ошибками, используя сохранённые сейчас настройки? После сетевого сбоя возможен дубликат у получателя.").setPositiveButton("Повторить",(a,b)->{
             try{if(QueueDb.get(activity).retryFailed(r.id,Config.load(activity))){Events.retry(activity,r.id);refresh();}else Toast.makeText(activity,"Нет доступного способа отправки с ошибкой или содержимое удалено",Toast.LENGTH_LONG).show();}
             catch(Exception e){Toast.makeText(activity,e instanceof IllegalArgumentException?e.getMessage():"Не удалось повторить событие",Toast.LENGTH_LONG).show();}
         }).setNegativeButton("Отмена",null).show());
