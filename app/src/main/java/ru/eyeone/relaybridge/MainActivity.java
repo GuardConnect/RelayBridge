@@ -39,8 +39,8 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private long overviewRevision=-1;private boolean overviewLoading;
     private final java.util.concurrent.ExecutorService overviewExecutor=Executors.newSingleThreadExecutor();
 
-    private TextView simDetails,callSimDetails;
-    private TextView status,journal,tgResult,mailResult,permissionStatus,simSummary,callSimSummary,overviewDetails,overviewReadiness;
+    private LinearLayout simList,callSimList;
+    private TextView status,journal,tgResult,mailResult,permissionStatus,overviewDetails,overviewReadiness;
     private CompoundButton sms,calls,pushes,ongoing,tg,email;
     private final TextView[] navLabels=new TextView[4];
     private final ImageView[] navIcons=new ImageView[4];
@@ -87,7 +87,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             .setNegativeButton("Отмена",null).show();
     }
     private void privacy(){
-        TextView text=new TextView(this);text.setText(Consent.PRIVACY);text.setTextColor(UiColors.ACCENT);text.setPadding(dp(16),dp(12),dp(16),dp(12));text.setTextIsSelectable(true);ScrollView view=new ScrollView(this);view.addView(text);
+        TextView text=new TextView(this);text.setText(Consent.PRIVACY);text.setTextColor(UiColors.TEXT);text.setPadding(dp(16),dp(12),dp(16),dp(12));text.setTextIsSelectable(true);ScrollView view=new ScrollView(this);view.addView(text);
         dialogBuilder().setTitle("Конфиденциальность RelayBridge").setView(view).setPositiveButton("Закрыть",null).show();
     }
     private void buildOverview(){
@@ -104,9 +104,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void buildChannels(){
         sectionTab=1;section("Источники");sms=check("Входящие SMS",cfg.sms);
-        secondary("SIM для SMS",this::chooseSims);simSummary=simStatus(false);updateSimSummary();
+        secondary("SIM для SMS",this::chooseSims);simList=simStatus();updateSimSummary();
         divider();calls=check("Входящие звонки",cfg.calls);
-        secondary("SIM для звонков",()->chooseSims(true));callSimSummary=simStatus(true);updateSimSummary();
+        secondary("SIM для звонков",()->chooseSims(true));callSimList=simStatus();updateSimSummary();
         divider();pushes=check("Уведомления",cfg.pushes);
         
         appsButton=secondary("Приложения · "+cfg.apps.size(),this::chooseApps);ongoing=check("Включать постоянные уведомления",cfg.ongoing);
@@ -257,7 +257,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);syncRelayToggle(cfg.enabled);relayMode.setText(cfg.enabled?"ВКЛ":"ВЫКЛ");relayToggle.setContentDescription(cfg.enabled?"Выключить пересылку":"Включить пересылку");
             recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
-            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(UiColors.ACCENT);
+            boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(channelReady&&missing.isEmpty()?UiColors.SUCCESS:UiColors.PENDING);
             updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName())});
             long last=Config.prefs(this).getLong("last-capture",0);
             String received=last>0?"Последнее событие: "+android.text.format.DateFormat.format("dd.MM HH:mm:ss",last)+"\n\n":"Новых событий в очереди пока нет.\n\n";
@@ -353,27 +353,43 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         }catch(IllegalArgumentException e){toast(e.getMessage());}
     }
     private void updateSimSummary(){
-        updateSimSummary(simSummary,"SMS",cfg.smsAllSims,cfg.smsSubscriptions);
-        updateSimSummary(callSimSummary,"Звонки",cfg.callAllSims,cfg.callSubscriptions);
+        updateSimSummary(simList,"SMS",cfg.smsAllSims,cfg.smsSubscriptions);
+        updateSimSummary(callSimList,"Звонки",cfg.callAllSims,cfg.callSubscriptions);
     }
-    private TextView simStatus(boolean forCalls){
+    private LinearLayout simStatus(){
+        LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
+        area.addView(list,new LinearLayout.LayoutParams(-1,-2));return list;
+    }
+    private void updateSimSummary(LinearLayout list,String source,boolean all,Set<Integer> selected){
+        if(list==null)return;
+        renderSimSelection(list,source,all,selected,SimCards.active(this),SimCards.permitted(this));
+    }
+    private void renderSimSelection(LinearLayout list,String source,boolean all,Set<Integer> selected,List<SimCards.Card> cards,boolean permitted){
+        list.removeAllViews();
+        if(!all&&selected.isEmpty()){
+            simCard(list,"SIM-карты не выбраны",source.equals("SMS")?"Захват SMS отключён":"Захват звонков отключён");return;
+        }
+        Set<Integer> shown=new HashSet<>();
+        for(SimCards.Card card:cards)if(all||selected.contains(card.id)){
+            simCard(list,card.label,all?"Выбрана автоматически":"Выбрана для "+source);shown.add(card.id);
+        }
+        if(!all){
+            List<Integer> missing=new ArrayList<>(selected);missing.removeAll(shown);Collections.sort(missing);
+            for(int id:missing)simCard(list,"SIM · ID "+id,permitted?"Сохранённая SIM сейчас недоступна":"Нужен доступ к состоянию телефона");
+        }else{
+            if(shown.isEmpty())simCard(list,"Все SIM-карты",permitted?"Активных SIM-карт сейчас нет":"Нужен доступ к состоянию телефона");
+            TextView hint=new TextView(this);hint.setText("Автовыбор включает новые SIM и eSIM");hint.setTextColor(UiColors.MUTED);hint.setTextSize(11);hint.setIncludeFontPadding(false);hint.setGravity(Gravity.CENTER);hint.setLineSpacing(dp(2),1);hint.setPadding(dp(8),dp(4),dp(8),dp(8));list.addView(hint,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
+    private void simCard(LinearLayout list,String name,String detail){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setPadding(dp(12),dp(10),dp(12),dp(10));
-        GradientDrawable shape=new GradientDrawable();shape.setColor(UiColors.SUCCESS_BG);shape.setCornerRadius(dp(12));shape.setStroke(dp(1),UiColors.BORDER);UiLayout.background(row,shape);LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(6);card.bottomMargin=dp(8);area.addView(row,card);
-        ImageView icon=new ImageView(this);icon.setImageDrawable(new UiIcon(8,UiColors.ACCENT,getResources().getDisplayMetrics().density));LinearLayout.LayoutParams image=new LinearLayout.LayoutParams(dp(20),dp(24));image.rightMargin=dp(10);row.addView(icon,image);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        GradientDrawable shape=new GradientDrawable();shape.setColor(UiColors.SUCCESS_BG);shape.setCornerRadius(dp(12));shape.setStroke(dp(1),UiColors.BORDER);UiLayout.background(row,shape);
+        LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(6);card.bottomMargin=dp(4);list.addView(row,card);
+        ImageView icon=new ImageView(this);icon.setImageDrawable(new UiIcon(8,UiColors.ACCENT,getResources().getDisplayMetrics().density));icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams image=new LinearLayout.LayoutParams(dp(20),dp(24));image.rightMargin=dp(10);row.addView(icon,image);
         LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
-        TextView title=new TextView(this);title.setTextSize(12);title.setTextColor(UiColors.TEXT);title.setIncludeFontPadding(false);title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));title.setLineSpacing(dp(2),1);words.addView(title,new LinearLayout.LayoutParams(-1,-2));
-        TextView detail=new TextView(this);detail.setTextSize(11);detail.setTextColor(UiColors.ACCENT);detail.setGravity(Gravity.CENTER);detail.setIncludeFontPadding(false);detail.setLineSpacing(dp(2),1);LinearLayout.LayoutParams caption=new LinearLayout.LayoutParams(-1,-2);caption.topMargin=dp(4);words.addView(detail,caption);if(forCalls)callSimDetails=detail;else simDetails=detail;return title;
-    }
-    private void updateSimSummary(TextView summary,String source,boolean all,Set<Integer> selected){
-        if(summary==null)return;TextView detail=source.equals("SMS")?simDetails:callSimDetails;summary.setTextColor(UiColors.TEXT);detail.setTextColor(UiColors.ACCENT);detail.setGravity(Gravity.CENTER);
-        if(all){summary.setText("Все SIM-карты");detail.setText("Автовыбор · включая новые SIM и eSIM");return;}
-        if(selected.isEmpty()){summary.setText("SIM-карты не выбраны");detail.setText(source.equals("SMS")?"Захват SMS отключён":"Захват звонков отключён");return;}
-        List<String> names=new ArrayList<>();for(SimCards.Card card:SimCards.active(this))if(selected.contains(card.id))names.add(card.label);
-        summary.setText(names.isEmpty()?"Выбрано SIM-карт: "+selected.size():String.join(" · ",names));
-        if(!SimCards.permitted(this))detail.setText("Нужен доступ к состоянию телефона");
-        else if(names.isEmpty())detail.setText("Сохранённые SIM сейчас недоступны");
-        else if(names.size()<selected.size())detail.setText("Недоступно: "+(selected.size()-names.size())+" из "+selected.size()+" выбранных SIM");
-        else detail.setText(selected.size()==1?"1 выбранная SIM-карта":"Выбрано SIM-карт: "+selected.size());
+        TextView title=new TextView(this);title.setText(name);title.setTextSize(12);title.setTextColor(UiColors.TEXT);title.setIncludeFontPadding(false);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));title.setLineSpacing(dp(2),1);words.addView(title,new LinearLayout.LayoutParams(-1,-2));
+        TextView caption=new TextView(this);caption.setText(detail);caption.setTextSize(11);caption.setTextColor(UiColors.MUTED);caption.setIncludeFontPadding(false);caption.setGravity(Gravity.CENTER);caption.setLineSpacing(dp(2),1);LinearLayout.LayoutParams note=new LinearLayout.LayoutParams(-1,-2);note.topMargin=dp(4);words.addView(caption,note);
+        View spacer=new View(this);spacer.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(spacer,new LinearLayout.LayoutParams(dp(30),1));
     }
     private void chooseSims(){chooseSims(false);}
     private void chooseSims(boolean forCalls){
@@ -387,7 +403,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         CheckBox all=new CheckBox(this);all.setText("Все SIM-карты, включая новые");all.setTextColor(UiColors.TEXT);all.setButtonTintList(choiceTint());all.setChecked(allSelected);content.addView(all);
         List<CheckBox> choices=new ArrayList<>();for(SimCards.Card card:cards){CheckBox choice=new CheckBox(this);choice.setText(card.label);choice.setTextColor(UiColors.TEXT);choice.setButtonTintList(choiceTint());choice.setChecked(allSelected||selectedIds.contains(card.id));choice.setEnabled(!all.isChecked());content.addView(choice);choices.add(choice);}
         all.setOnCheckedChangeListener((v,on)->{for(CheckBox choice:choices)choice.setEnabled(!on);});
-        TextView hint=new TextView(this);hint.setTextColor(UiColors.ACCENT);hint.setTextSize(13);hint.setPadding(0,dp(12),0,0);
+        TextView hint=new TextView(this);hint.setTextColor(UiColors.MUTED);hint.setTextSize(13);hint.setPadding(0,dp(12),0,0);
         hint.setText("Отключите «Все SIM-карты» и отметьте нужные. Без выбора захват этого источника отключён. После замены SIM или eSIM проверьте выбор снова."+(forCalls?" Если Android не сообщает SIM звонка и её нельзя однозначно определить, при выборе отдельных SIM звонок будет пропущен.":"")+(cards.isEmpty()?" Активные SIM не найдены.":""));content.addView(hint);
         ScrollView view=new ScrollView(this);view.addView(content);
         dialogBuilder().setTitle(forCalls?"SIM для захвата звонков":"SIM для захвата SMS").setView(view).setPositiveButton("Сохранить выбор",(d,w)->{
@@ -477,14 +493,14 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         return new AlertDialog.Builder(this){
             @Override public AlertDialog create(){
                 AlertDialog dialog=super.create();
-                dialog.setOnShowListener(ignored->{TextView message=dialog.findViewById(android.R.id.message);if(message!=null){message.setTextColor(UiColors.ACCENT);if(selectedTab==1)message.setGravity(Gravity.CENTER);}});
+                dialog.setOnShowListener(ignored->{TextView message=dialog.findViewById(android.R.id.message);if(message!=null){if(selectedTab==1)message.setGravity(Gravity.CENTER);}});
                 return dialog;
             }
         };
     }
     private TextView formLabel(String text){TextView label=note(text);label.setTextColor(UiColors.TEXT);label.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);label.setTextSize(12);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,dp(10),0,dp(6));return label;}
-    private TextView formHelp(String text){TextView hint=note(text);hint.setTextColor(UiColors.ACCENT);hint.setTextSize(11);hint.setLineSpacing(dp(2),1);hint.setPadding(0,dp(4),0,dp(10));return hint;}
-    private TextView note(String text){TextView t=new TextView(this);t.setIncludeFontPadding(false);t.setGravity(sectionTab==1?Gravity.CENTER:Gravity.START|Gravity.CENTER_VERTICAL);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.ACCENT);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t,new LinearLayout.LayoutParams(-1,-2));return t;}
+    private TextView formHelp(String text){TextView hint=note(text);hint.setTextColor(UiColors.TEXT);hint.setTextSize(11);hint.setLineSpacing(dp(2),1);hint.setPadding(0,dp(4),0,dp(10));return hint;}
+    private TextView note(String text){TextView t=new TextView(this);t.setIncludeFontPadding(false);t.setGravity(sectionTab==1?Gravity.CENTER:Gravity.START|Gravity.CENTER_VERTICAL);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.MUTED);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t,new LinearLayout.LayoutParams(-1,-2));return t;}
     private CompoundButton check(String text,boolean value){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(56));row.setPadding(0,dp(8),0,dp(8));area.addView(row,new LinearLayout.LayoutParams(-1,-2));
         int kind=text.contains("SMS")?4:text.contains("звон")?5:text.equals("Уведомления")?6:text.equals("Telegram")?1:text.equals("Email / SMTP")?7:-1;
@@ -508,7 +524,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
     private EditText field(String label,String value,boolean secret){
-        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.ACCENT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.TEXT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         if(secret){input.setTransformationMethod(PasswordTransformationMethod.getInstance());input.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);input.setSaveEnabled(false);}
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);area.addView(input,lp);return input;
     }
