@@ -114,6 +114,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         appsButton=button("Выберите приложения из списка установленных",this::chooseApps);
         selectedAppsCount=note("");selectedAppsList=new LinearLayout(this);selectedAppsList.setOrientation(LinearLayout.VERTICAL);area.addView(selectedAppsList,new LinearLayout.LayoutParams(-1,-2));updateSelectedApps();
         ongoing=check("Включать постоянные уведомления",cfg.ongoing);
+        TextView ongoingHelp=formHelp("Пересылать также постоянные уведомления выбранных приложений — например, о VPN, воспроизведении музыки или фоновой работе. Когда выключено, такие уведомления пропускаются.");ongoingHelp.setTextColor(UiColors.MUTED);
 
         section("Получатели · Telegram");tg=check("Telegram",cfg.telegram);
         token=field("Токен бота",cfg.token,true);token.setHint("Токен от @BotFather");chat=field("Chat ID",cfg.chat,false);chat.setHint("Числовой ID или @имя_канала");
@@ -145,7 +146,8 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         section(" ");button("Сохранить настройки",()->save(false));
     }
     private void buildAccess(){
-        sectionTab=2;section("Проверка доступа");area.setBackgroundColor(UiColors.BACKGROUND);area.setPadding(0,0,0,0);permissionStatus=note("");accessCount=permissionStatus;accessCount.setTextSize(26);accessCount.setTypeface(null,Typeface.BOLD);accessCount.setTextColor(UiColors.TEXT);
+        sectionTab=2;section("Проверка доступа");area.setBackgroundColor(UiColors.BACKGROUND);area.setPadding(0,0,0,0);permissionStatus=note("");permissionStatus.setTextSize(20);permissionStatus.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));permissionStatus.setTextColor(UiColors.TEXT);
+        accessCount=note("");accessCount.setTextSize(28);accessCount.setTypeface(null,Typeface.BOLD);accessCount.setTextColor(UiColors.ACCENT);accessCount.setPadding(0,dp(2),0,dp(8));
         LinearLayout progress=new LinearLayout(this);area.addView(progress);for(int i=0;i<accessSegments.length;i++){View bar=new View(this);accessSegments[i]=bar;LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(4),1);lp.setMargins(0,dp(8),dp(4),dp(8));progress.addView(bar,lp);}
         section("Нужно выдать");missingAccess=area;missingAccess.setBackgroundColor(UiColors.BACKGROUND);missingAccess.setPadding(0,0,0,0);
         section("Уже выдано");grantedAccess=area;
@@ -171,7 +173,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         Runnable[] actions={()->requestAccess(PermissionRequests.SMS),()->requestAccess(PermissionRequests.PHONE),()->requestAccess(PermissionRequests.CALL_LOG),()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),()->requestAccess(PermissionRequests.STATUS),this::openStatusNotificationSettings,this::requestUnrestrictedBackground,()->requestAccess(PermissionRequests.CONTACTS)};
         int count=0;for(int i=0;i<flags.length;i++){if(flags[i]){count++;grantedRow(labels[i]+(i==3&&RelayListener.connected?" · подключена":""));}else{LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));UiLayout.background(card,border(UiColors.SURFACE));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);missingAccess.addView(card,lp);area=card;title(labels[i],17);note(hints[i]);makeButton("Разрешить",actions[i],true);}}
         if(count==flags.length){area=missingAccess;note("Все разрешения выданы");}if(count==0){area=grantedAccess;note("Выданных разрешений пока нет");}
-        accessCount.setText((count==flags.length?"Все разрешения выданы":"Разрешено")+" · "+count+" / "+flags.length);for(int i=0;i<accessSegments.length;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
+        permissionStatus.setText(count==flags.length?"Всё готово":"Разрешения");accessCount.setText(count+" / "+flags.length);for(int i=0;i<accessSegments.length;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
     }
     private void buildHistory(){
         sectionTab=3;section(" ");journal=note("");journal.setVisibility(View.GONE);area.setPadding(0,0,0,0);area.setBackgroundColor(UiColors.BACKGROUND);
@@ -558,7 +560,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
     private EditText field(String label,String value,boolean secret){
-        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.TEXT);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+        formLabel(label);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setIncludeFontPadding(false);input.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.MUTED);input.setTextDirection(View.TEXT_DIRECTION_LTR);UiLayout.background(input,border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         if(secret){input.setTransformationMethod(PasswordTransformationMethod.getInstance());input.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);input.setSaveEnabled(false);}
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);area.addView(input,lp);return input;
     }
