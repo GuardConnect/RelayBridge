@@ -78,16 +78,22 @@ final class SmtpClient {
         if(mechanism.equals("AUTO"))mechanism=offered.contains("LOGIN")?"LOGIN":offered.contains("PLAIN")?"PLAIN":"";
         if(mechanism.isEmpty()||!offered.contains(mechanism))throw new Senders.SendError(false,"AUTH: сервер не объявил выбранный способ. Доступно: "+String.join(",",offered)+". Выберите способ во вкладке Отправка.");
         step("AUTH "+mechanism);
+        String password=passwordForAuth(c);
         Reply result;
         if(mechanism.equals("LOGIN")) {
             command("AUTH LOGIN","AUTH LOGIN");result=reply();expect(result,334);
             command(base64(c.user),"<логин скрыт>");expect(reply(),334);
-            command(base64(c.password),"<пароль скрыт>");result=reply();
+            command(base64(password),"<пароль скрыт>");result=reply();
         }else if(mechanism.equals("PLAIN")){
-            String value=base64("\0"+c.user+"\0"+c.password);command("AUTH PLAIN "+value,"AUTH PLAIN <данные скрыты>");result=reply();
+            String value=base64("\0"+c.user+"\0"+password);command("AUTH PLAIN "+value,"AUTH PLAIN <данные скрыты>");result=reply();
             if(result.code==334){command(value,"<данные AUTH скрыты>");result=reply();}
         }else throw new Senders.SendError(false,"AUTH: неизвестный способ авторизации");
         expect(result,235);trace.accept("AUTH: сервер подтвердил авторизацию");
+    }
+    static String passwordForAuth(Config c){
+        if(!c.host.equalsIgnoreCase("smtp.gmail.com")&&!c.host.equalsIgnoreCase("smtp.googlemail.com"))return c.password;
+        String compact=c.password.replaceAll("[\\s\\u00A0\\u202F]+","");
+        return compact.matches("[A-Za-z0-9]{16}")?compact:c.password;
     }
     private void command(String wire,String visible) throws IOException {
         if(wire.indexOf('\r')>=0||wire.indexOf('\n')>=0)throw new IOException("Invalid command");

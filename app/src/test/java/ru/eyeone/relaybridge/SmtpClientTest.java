@@ -42,6 +42,15 @@ public class SmtpClientTest {
             String trace=String.join("\n",log);assertFalse(trace.contains(c.user));assertFalse(trace.contains(c.password));assertFalse(trace.contains(Base64.getEncoder().encodeToString(c.password.getBytes(StandardCharsets.UTF_8))));assertFalse(trace.contains("Привет\n.Line\n"));
         }finally{listener.close();pool.shutdownNow();}
     }
+    @Test public void gmailDisplayPasswordIsNormalizedForBothAuthModes(){
+        Config c=new Config();c.host="smtp.gmail.com";c.password="abcd efgh ijkl mnop";assertEquals("abcdefghijklmnop",SmtpClient.passwordForAuth(c));
+        c.auth="PLAIN";c.password=" abcd\u00a0efgh\u202fijkl\tmnop ";assertEquals("abcdefghijklmnop",SmtpClient.passwordForAuth(c));
+        c.host="SMTP.GOOGLEMAIL.COM";c.password="abcdefghijklmnop";assertEquals(c.password,SmtpClient.passwordForAuth(c));
+    }
+    @Test public void passwordsOfOtherServersAndNonAppPasswordsAreNotAltered(){
+        Config c=new Config();c.host="smtp.example.com";c.password="abcd efgh ijkl mnop";assertEquals(c.password,SmtpClient.passwordForAuth(c));
+        c.host="smtp.gmail.com";c.password="short password";assertEquals(c.password,SmtpClient.passwordForAuth(c));
+    }
     @Test public void implicitTlsLoginDeliversUtf8Mime()throws Exception {
         exercise("SSL","AUTO",p->{p.reply("220 Ready");p.ehlo("250 AUTH LOGIN PLAIN");assertEquals("AUTH LOGIN",p.read());p.reply("334 VXNlcm5hbWU6");assertEquals("private-user@example.com",new String(Base64.getDecoder().decode(p.read()),StandardCharsets.UTF_8));p.reply("334 UGFzc3dvcmQ6");assertEquals("secret-fixture-token",new String(Base64.getDecoder().decode(p.read()),StandardCharsets.UTF_8));p.reply("235 2.7.0 OK");p.finish();},false,"",false);
     }
