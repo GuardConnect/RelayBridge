@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       publish:
@@ -130,15 +132,15 @@ jobs:
             echo 'Tag does not match the APK version' >&2
             exit 1
           fi
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Release $tag already exists; verified APK remains available in Actions artifacts" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           if tag_commit=$(gh api "repos/$GH_REPO/commits/$tag" --jq '.sha' 2>/dev/null); then
             [[ "$tag_commit" == "$GITHUB_SHA" ]] || {
               echo 'Existing version tag points to a different commit' >&2
               exit 1
             }
-          fi
-          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
-            echo 'Release already exists; existing public APK will not be overwritten' >&2
-            exit 1
           fi
           gh release create "$tag" "RelayBridge-$RELEASE_VERSION-arm64-v8a.apk" SHA256SUMS.txt \
             --repo "$GH_REPO" --target "$GITHUB_SHA" --title "RelayBridge $RELEASE_VERSION" \
