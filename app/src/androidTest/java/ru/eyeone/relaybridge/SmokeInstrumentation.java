@@ -36,7 +36,7 @@ public class SmokeInstrumentation extends Instrumentation {
                 ((EditText)screen.findViewById(2005)).setText("abcd\u00a0efgh\u202fijkl\nmnop");
                 ((EditText)screen.findViewById(2006)).setText("");
                 ((EditText)screen.findViewById(2007)).setText("receiver@example.com");
-                CheckBox email=(CheckBox)findText(screen.getWindow().getDecorView(),"Email / SMTP");
+                View emailLabel=findText(screen.getWindow().getDecorView(),"Email / SMTP");CompoundButton email=emailLabel==null?null:findToggle((View)emailLabel.getParent());
                 check(email!=null,"Email toggle missing");email.setChecked(true);
                 View save=findText(screen.getWindow().getDecorView(),"Сохранить настройки");
                 check(save!=null,"Save button missing");save.performClick();
@@ -90,14 +90,14 @@ public class SmokeInstrumentation extends Instrumentation {
                 ((MainActivity)screen).appDialog.dismiss();
                 check(findText(screen.getWindow().getDecorView(),"Войти в Google")==null,"Removed sign-in control remains");
                 check(findText(screen.getWindow().getDecorView(),"SMTP сервер")!=null,"SMTP server field missing");
-                findText(screen.getWindow().getDecorView(),"Обзор").performClick();
+                navigate(screen,0);
                 screen.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
             });
-            Thread.sleep(800);capture(screen,"overview.png");
-            runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Отправка").performClick());Thread.sleep(500);capture(screen,"channels.png");
-            runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Доступ").performClick());Thread.sleep(500);capture(screen,"access.png");
+            Thread.sleep(800);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"overview.png");
+            runOnMainSync(()->navigate(screen,1));Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"channels.png");
+            runOnMainSync(()->navigate(screen,2));Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"access.png");
             long mock=db.add("visual-notification","Уведомление","RelayBridge · Уведомление\n2026-10-04 07:00\n\nSignal (org.thoughtcrime.securesms)\nТест интерфейса\nСообщение передано в выбранные каналы.",route);db.update(mock,"tg",1);db.update(mock,"mail",1);db.redactDone(mock);
-            runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Журнал").performClick());Thread.sleep(1000);capture(screen,"history.png");
+            runOnMainSync(()->navigate(screen,3));Thread.sleep(1000);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"history.png");
             runOnMainSync(()->screen.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE));
             pass("Ordinary SMTP controls, dark theme navigation and synthetic UI captures");
             report.append("Completed: ").append(passed).append(" runtime checks. No real network messages sent.\n");
@@ -108,10 +108,22 @@ public class SmokeInstrumentation extends Instrumentation {
             try {Events.clear(c);if(original!=null)original.save(c);if(activity!=null){Activity a=activity;runOnMainSync(a::finish);}}catch(Exception ignored){}
         }
     }
+    private void navigate(Activity screen,int index){
+        try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField("navigation");field.setAccessible(true);ViewGroup nav=(ViewGroup)field.get(screen);check(nav.getChildAt(index).performClick(),"Navigation click failed");}catch(ReflectiveOperationException e){throw new AssertionError(e);}
+    }
     private void capture(Activity screen,String name)throws Exception{
-        android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();check(bitmap!=null,"UI capture failed");
+        android.graphics.Bitmap[] rendered=new android.graphics.Bitmap[1];
+        runOnMainSync(()->{View root=screen.findViewById(android.R.id.content);check(root.getWidth()>0&&root.getHeight()>0,"UI has no size");rendered[0]=android.graphics.Bitmap.createBitmap(root.getWidth(),root.getHeight(),android.graphics.Bitmap.Config.ARGB_8888);root.draw(new android.graphics.Canvas(rendered[0]));});
+        android.graphics.Bitmap bitmap=rendered[0];
         try(java.io.FileOutputStream out=new java.io.FileOutputStream(new java.io.File(screen.getFilesDir(),name))){bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}bitmap.recycle();
     }
+    private void checkGrid(View view){
+        if(view.getVisibility()!=View.VISIBLE||view.getWidth()==0)return;
+        if(view instanceof Switch){ViewGroup row=(ViewGroup)view.getParent();check(view.getTop()>=0&&view.getBottom()<=row.getHeight(),"Switch clipped vertically");for(int i=0;i<row.getChildCount();i++){View sibling=row.getChildAt(i);if(sibling instanceof TextView&&sibling!=view)check(sibling.getRight()<=view.getLeft(),"Switch overlaps its label");}}
+        if(view instanceof LinearLayout){LinearLayout row=(LinearLayout)view;if(row.getOrientation()==LinearLayout.VERTICAL&&row.getChildCount()==2&&row.getChildAt(0) instanceof ImageView&&row.getChildAt(1) instanceof TextView){View icon=row.getChildAt(0),label=row.getChildAt(1);check(Math.abs((icon.getLeft()+icon.getRight())-(label.getLeft()+label.getRight()))<=2,"Navigation icon and label are not centered");}}
+        if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++)checkGrid(((ViewGroup)view).getChildAt(i));
+    }
+    private CompoundButton findToggle(View v){if(v instanceof CompoundButton)return (CompoundButton)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){CompoundButton found=findToggle(((ViewGroup)v).getChildAt(i));if(found!=null)return found;}return null;}
     private View findText(View v,String text) {
         if(v instanceof TextView && text.contentEquals(((TextView)v).getText()))return v;
         if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View found=findText(((ViewGroup)v).getChildAt(i),text);if(found!=null)return found;}

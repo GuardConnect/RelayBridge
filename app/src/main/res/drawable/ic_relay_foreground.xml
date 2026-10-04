@@ -1,5 +1,5 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:scaleX="1.5" android:scaleY="1.5" android:translateX="18" android:translateY="18">
-        <path android:fillColor="#FFFFFF" android:pathData="M8,23 L39,9 L29,39 L22,28 L8,23 M23,24 L31,17 L20,22z"/>
-    </group>
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="64dp" android:height="64dp" android:gravity="center">
+        <bitmap android:src="@drawable/ic_relay_mark" android:gravity="fill" android:filter="true"/>
+    </item>
+</layer-list>

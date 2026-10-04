@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'ru.eyeone.relaybridge'
     compileSdk 36
-    defaultConfig { applicationId 'ru.eyeone.relaybridge'; minSdk 35; targetSdk 36; versionCode 18; versionName '2.1'; testInstrumentationRunner 'ru.eyeone.relaybridge.SmokeInstrumentation' }
+    defaultConfig { applicationId 'ru.eyeone.relaybridge'; minSdk 35; targetSdk 36; versionCode 19; versionName '2.2'; testInstrumentationRunner 'ru.eyeone.relaybridge.SmokeInstrumentation' }
     // CI may explicitly restrict any future JNI dependencies to ARMv8.
     def relayAbi = providers.gradleProperty('relayAbi').orNull
     if (relayAbi != null) {
@@ -10,6 +10,7 @@ android {
         defaultConfig.ndk.abiFilters.add(relayAbi)
     }
     buildFeatures { buildConfig true }
+    testOptions { unitTests.includeAndroidResources = true; unitTests.all { forkEvery = 1 } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     signingConfigs { debug { storeFile file('../development-signing.keystore'); storePassword 'android'; keyAlias 'AndroidDebugKey'; keyPassword 'android' } }
     buildTypes { debug { debuggable false }; release { debuggable false } }
@@ -28,4 +29,5 @@ dependencies {
     implementation 'androidx.work:work-runtime:2.10.1'
     implementation 'androidx.activity:activity:1.12.4'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
 }
