@@ -370,8 +370,8 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         boolean allSelected=forCalls?cfg.callAllSims:cfg.smsAllSims;
         Set<Integer> selectedIds=forCalls?cfg.callSubscriptions:cfg.smsSubscriptions;
         List<SimCards.Card> cards=SimCards.active(this);LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(20),dp(8),dp(20),dp(12));
-        CheckBox all=new CheckBox(this);all.setText("Все SIM-карты, включая новые");all.setTextColor(UiColors.TEXT);all.setChecked(allSelected);content.addView(all);
-        List<CheckBox> choices=new ArrayList<>();for(SimCards.Card card:cards){CheckBox choice=new CheckBox(this);choice.setText(card.label);choice.setTextColor(UiColors.TEXT);choice.setChecked(allSelected||selectedIds.contains(card.id));choice.setEnabled(!all.isChecked());content.addView(choice);choices.add(choice);}
+        CheckBox all=new CheckBox(this);all.setText("Все SIM-карты, включая новые");all.setTextColor(UiColors.TEXT);all.setButtonTintList(choiceTint());all.setChecked(allSelected);content.addView(all);
+        List<CheckBox> choices=new ArrayList<>();for(SimCards.Card card:cards){CheckBox choice=new CheckBox(this);choice.setText(card.label);choice.setTextColor(UiColors.TEXT);choice.setButtonTintList(choiceTint());choice.setChecked(allSelected||selectedIds.contains(card.id));choice.setEnabled(!all.isChecked());content.addView(choice);choices.add(choice);}
         all.setOnCheckedChangeListener((v,on)->{for(CheckBox choice:choices)choice.setEnabled(!on);});
         TextView hint=new TextView(this);hint.setTextColor(UiColors.MUTED);hint.setTextSize(13);hint.setPadding(0,dp(12),0,0);
         hint.setText("Отключите «Все SIM-карты» и отметьте нужные. Без выбора захват этого источника отключён. После замены SIM или eSIM проверьте выбор снова."+(forCalls?" Если Android не сообщает SIM звонка и её нельзя однозначно определить, при выборе отдельных SIM звонок будет пропущен.":"")+(cards.isEmpty()?" Активные SIM не найдены.":""));content.addView(hint);
@@ -424,7 +424,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
                 LinearLayout text=new LinearLayout(MainActivity.this);text.setOrientation(LinearLayout.VERTICAL);row.addView(text,new LinearLayout.LayoutParams(0,-2,1));
                 h.name=new TextView(MainActivity.this);h.name.setTextColor(UiColors.TEXT);h.name.setTextSize(16);h.name.setTypeface(null,Typeface.BOLD);h.name.setMaxLines(2);h.name.setEllipsize(TextUtils.TruncateAt.END);text.addView(h.name);
                 h.pkg=new TextView(MainActivity.this);h.pkg.setTextColor(UiColors.MUTED);h.pkg.setTextSize(12);h.pkg.setTypeface(Typeface.MONOSPACE);h.pkg.setSingleLine(false);h.pkg.setTextDirection(View.TEXT_DIRECTION_LTR);text.addView(h.pkg);
-                h.box=new CheckBox(MainActivity.this);h.box.setButtonTintList(ColorStateList.valueOf(UiColors.TEXT));row.addView(h.box);row.setTag(h);
+                h.box=new CheckBox(MainActivity.this);h.box.setButtonTintList(choiceTint());row.addView(h.box);row.setTag(h);
             }else{row=(LinearLayout)convert;h=(RowHolder)row.getTag();}
             AppRow a=getItem(position);String pkg=a.info.packageName;Drawable icon=icons.get(pkg);
             if(icon==null){try{icon=a.info.loadIcon(getPackageManager());}catch(Exception ignored){icon=getPackageManager().getDefaultActivityIcon();}if(icon==null)icon=getPackageManager().getDefaultActivityIcon();icons.put(pkg,icon);}
@@ -474,10 +474,11 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);row.addView(words,lp);LinearLayout old=area;area=words;title(heading,16);TextView subtitle=note(detail);subtitle.setPadding(0,dp(4),0,0);if(detail.isEmpty())subtitle.setVisibility(View.GONE);area=old;
         TextView arrow=new TextView(this);arrow.setText("›");arrow.setIncludeFontPadding(false);arrow.setGravity(Gravity.CENTER);arrow.setTextSize(26);arrow.setTextColor(UiColors.MUTED);row.addView(arrow,new LinearLayout.LayoutParams(dp(24),dp(32)));row.setFocusable(true);row.setOnClickListener(v->action.run());return subtitle;
     }
+    private ColorStateList choiceTint(){return new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{android.R.attr.state_checked},new int[]{}},new int[]{UiColors.BORDER,UiColors.ACCENT,UiColors.MUTED});}
     private Spinner segments(String[] values,String selected){
         Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));int pos=Arrays.asList(values).indexOf(selected);spinner.setSelection(Math.max(0,pos));spinner.setVisibility(View.GONE);area.addView(spinner);
         LinearLayout row=new LinearLayout(this);row.setPadding(dp(3),dp(3),dp(3),dp(3));UiLayout.background(row,border(UiColors.FIELD));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(10);area.addView(row,lp);
-        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);UiLayout.background(button,border(on?UiColors.TEXT:UiColors.FIELD));}};
+        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);UiLayout.background(button,border(on?UiColors.ACCENT:UiColors.FIELD));}};
         for(int k=0;k<values.length;k++){final int index=k;Button button=new Button(this);button.setText(values[k]);button.setTextSize(11);button.setIncludeFontPadding(false);button.setGravity(Gravity.CENTER);button.setAllCaps(false);button.setPadding(0,0,0,0);button.setMinWidth(0);button.setMinimumWidth(0);row.addView(button,new LinearLayout.LayoutParams(0,-1,1));button.setOnClickListener(v->{spinner.setSelection(index);paint.run();});}paint.run();return spinner;
     }
     private void styleSpinner(Spinner spinner){UiLayout.background(spinner,border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
