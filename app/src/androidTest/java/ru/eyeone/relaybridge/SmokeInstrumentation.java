@@ -86,6 +86,11 @@ public class SmokeInstrumentation extends Instrumentation {
             QueueDb.Event retry=db.event(id);check(retry.tg==1&&retry.mail==0&&retry.route.user.equals(saved.user),"Retry changed successful channel or used stale credentials");
             db.deleteEvent(id);check(db.history().isEmpty(),"History deletion failed");
             pass("Delivered history retains encrypted content, independent status and deletion");
+            saved.enabled=true;saved.save(c);
+            runOnMainSync(()->{
+                try{java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("updateStatus");refresh.setAccessible(true);refresh.invoke(screen);java.lang.reflect.Field field=MainActivity.class.getDeclaredField("relayToggle");field.setAccessible(true);Switch toggle=(Switch)field.get(screen);check(toggle.isChecked(),"Enabled state was not reflected by relay switch");toggle.setChecked(false);check(!toggle.isChecked(),"Relay switch failed to stop");}catch(ReflectiveOperationException e){throw new AssertionError(e);}
+                check(findText(screen.getWindow().getDecorView(),"О фоновой работе")==null,"Background help button was not removed");
+            });check(!Config.load(c).enabled,"Switch did not persist the stopped state");pass("Main relay switch reflects saved state and persists stopping");
             runOnMainSync(()->{
                 ((MainActivity)screen).appDialog.dismiss();
                 check(findText(screen.getWindow().getDecorView(),"Войти в Google")==null,"Removed sign-in control remains");
@@ -94,8 +99,9 @@ public class SmokeInstrumentation extends Instrumentation {
                 screen.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
             });
             Thread.sleep(800);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"overview.png");
-            runOnMainSync(()->navigate(screen,1));Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"channels.png");
+            runOnMainSync(()->{navigate(screen,1);View smsLabel=findText(screen.getWindow().getDecorView(),"Входящие SMS");findToggle((View)smsLabel.getParent()).setChecked(true);});Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"channels.png");
             runOnMainSync(()->navigate(screen,2));Thread.sleep(500);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"access.png");
+            runOnMainSync(()->navigate(screen,3));Thread.sleep(1000);capture(screen,"history-empty.png");
             long mock=db.add("visual-notification","Уведомление","RelayBridge · Уведомление\n2026-10-04 07:00\n\nSignal (org.thoughtcrime.securesms)\nТест интерфейса\nСообщение передано в выбранные каналы.",route);db.update(mock,"tg",1);db.update(mock,"mail",1);db.redactDone(mock);
             runOnMainSync(()->navigate(screen,3));Thread.sleep(1000);runOnMainSync(()->checkGrid(screen.getWindow().getDecorView()));capture(screen,"history.png");
             runOnMainSync(()->screen.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE));

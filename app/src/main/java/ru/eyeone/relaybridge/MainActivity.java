@@ -29,7 +29,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private HistoryView history;
     private ScrollView scroll;
     private TextView brandTitle,recipientSummary,sourceSummary,lastEvent;
-    private Button activateButton;
+    private UiSwitch relayToggle;
+    private TextView relayMode;
+    private boolean syncingRelayToggle;
     private LinearLayout missingAccess,grantedAccess;
     private TextView accessCount;
     private View[] accessSegments=new View[7];
@@ -88,9 +90,14 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         new AlertDialog.Builder(this).setTitle("Конфиденциальность RelayBridge").setView(view).setPositiveButton("Закрыть",null).show();
     }
     private void buildOverview(){
-        sectionTab=0;section("Пересылка");status=note("");status.setTextSize(30);status.setTypeface(null,Typeface.BOLD);overviewDetails=note("");
-        activateButton=button("Включить пересылку",this::activate);
-        secondary("Остановить и очистить очередь",()->{try{Indicator.stop(this);cfg.enabled=false;updateStatus();toast("Пересылка остановлена");}catch(Exception e){toast("Не удалось остановить пересылку");}});
+        sectionTab=0;section("Пересылка");
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setBaselineAligned(false);row.setMinimumHeight(dp(56));area.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams labelLp=new LinearLayout.LayoutParams(0,-2,1);labelLp.rightMargin=dp(16);row.addView(words,labelLp);
+        LinearLayout card=area;area=words;status=note("");status.setTextSize(20);status.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));relayMode=note("");relayMode.setTextSize(12);area=card;
+        relayToggle=new UiSwitch(this);relayToggle.setContentDescription("Включить пересылку");row.addView(relayToggle,new LinearLayout.LayoutParams(-2,-2));
+        relayToggle.setOnCheckedChangeListener((button,on)->{if(syncingRelayToggle)return;if(on){syncRelayToggle(cfg.enabled);activate();}else{try{Indicator.stop(this);cfg.enabled=false;toast("Пересылка остановлена");}catch(Exception e){toast("Не удалось остановить пересылку");}updateStatus();}});
+        row.setOnClickListener(v->relayToggle.setChecked(!relayToggle.isChecked()));status.setOnClickListener(v->relayToggle.setChecked(!relayToggle.isChecked()));
+        overviewDetails=note("");
         section("Готовность");recipientSummary=linkRow("Получатели","Настройте получателей",()->selectTab(1),1);sourceSummary=linkRow("Источники","Выберите источники",()->selectTab(1),4);overviewReadiness=linkRow("Доступ","Проверка доступа",()->selectTab(2),2);
         section("Последнее событие");lastEvent=linkRow("События","После включения пересылки",()->selectTab(3),3);
     }
@@ -140,7 +147,6 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         linkRow("Оптимизация батареи","",()->open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)),2);
         linkRow("Карточка приложения","",this::openAppSettings,2);
         linkRow("Почему Android блокирует разрешения?","",this::permissionHelp,2);
-        secondary("О фоновой работе",()->new AlertDialog.Builder(this).setTitle("Работа в фоне").setMessage("Система может задерживать фоновые задания. Разрешите исключение из оптимизации батареи и проверьте автозапуск в настройках прошивки. После принудительной остановки откройте приложение снова.").setPositiveButton("Понятно",null).show());
     }
     private void updateAccess(boolean[] flags){
         String key=Arrays.toString(flags)+RelayListener.connected;if(key.equals(accessSignature))return;accessSignature=key;
@@ -224,6 +230,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         .setMessage("Для APK из файла Android 15 может блокировать SMS и доступ к уведомлениям до отдельного подтверждения.\n\nОткройте Настройки → Приложения → RelayBridge → меню ⋮ → «Разрешить ограниченные настройки». После подтверждения вернитесь и снова запросите разрешение.\n\nЕсли пункта нет или запрет сохраняется, установщик/прошивка или администратор может не разрешать этот доступ. Само приложение не может отменить запрет. Тесты Telegram и email работают без этих разрешений.")
         .setPositiveButton("Открыть карточку",(d,w)->openAppSettings()).setNegativeButton("Закрыть",null).show();}
     private void openAppSettings(){open(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));}
+    private void syncRelayToggle(boolean enabled){syncingRelayToggle=true;try{relayToggle.setChecked(enabled);}finally{syncingRelayToggle=false;}}
     private void updateStatus(){
         if(status==null)return;
         try{
@@ -231,12 +238,12 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             boolean smsReady=granted(Manifest.permission.RECEIVE_SMS),phoneReady=granted(Manifest.permission.READ_PHONE_STATE),notificationsReady=listenerGranted();
             String listener=notificationsReady?(RelayListener.connected?"подключена":"доступ разрешён; служба не подключена"):"доступ не выдан / ограничен";
             PowerManager pm=getSystemService(PowerManager.class);
-            String state=cfg.enabled?"● Активна":"○ Остановлена";
+            String state=cfg.enabled?"Активна":"Остановлена";
             android.text.SpannableStringBuilder overview=new android.text.SpannableStringBuilder(state);
             overview.setSpan(new android.text.style.ForegroundColorSpan(cfg.enabled?UiColors.SUCCESS:UiColors.ERROR),0,state.length(),android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            status.setText(overview);status.setTextColor(UiColors.MUTED);status.setTextSize(30);status.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
+            status.setText(overview);status.setTextColor(UiColors.MUTED);status.setTextSize(20);status.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
             String routes=(stored.telegram?"Telegram":"")+(stored.telegram&&stored.email?" · ":"")+(stored.email?"Email":"");int sources=(stored.sms?1:0)+(stored.calls?1:0)+(stored.pushes?1:0);
-            overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);activateButton.setVisibility(cfg.enabled?View.GONE:View.VISIBLE);
+            overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);syncRelayToggle(cfg.enabled);relayMode.setText(cfg.enabled?"ВКЛ":"ВЫКЛ");relayToggle.setContentDescription(cfg.enabled?"Выключить пересылку":"Включить пересылку");
             recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
             boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(channelReady&&missing.isEmpty()?UiColors.SUCCESS:UiColors.PENDING);
@@ -451,7 +458,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         int kind=text.contains("SMS")?4:text.contains("звон")?5:text.equals("Уведомления")?6:text.equals("Telegram")?1:text.equals("Email / SMTP")?7:-1;
         if(kind>=0){ImageView icon=new ImageView(this);icon.setImageDrawable(new UiIcon(kind,UiColors.TEXT,getResources().getDisplayMetrics().density));icon.setScaleType(ImageView.ScaleType.FIT_CENTER);LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(24),dp(24));ip.rightMargin=dp(12);row.addView(icon,ip);}
         TextView label=new TextView(this);label.setText(text);label.setTextColor(UiColors.TEXT);label.setTextSize(kind>=0?15:13);label.setIncludeFontPadding(false);label.setGravity(Gravity.CENTER_VERTICAL);if(kind>=0)label.setTypeface(null,Typeface.BOLD);LinearLayout.LayoutParams words=new LinearLayout.LayoutParams(0,-2,1);words.rightMargin=dp(12);row.addView(label,words);
-        Switch toggle=new Switch(this);toggle.setShowText(false);toggle.setTextOn("");toggle.setTextOff("");toggle.setSwitchMinWidth(dp(48));toggle.setSplitTrack(false);toggle.setPadding(0,0,0,0);toggle.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{UiColors.BACKGROUND,UiColors.MUTED}));toggle.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{UiColors.ACCENT,UiColors.BORDER}));toggle.setChecked(value);toggle.setContentDescription(text);row.addView(toggle,new LinearLayout.LayoutParams(-2,-2));row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));label.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));return toggle;
+        Switch toggle=new UiSwitch(this);toggle.setChecked(value);toggle.setContentDescription(text);row.addView(toggle,new LinearLayout.LayoutParams(-2,-2));row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));label.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));return toggle;
     }
     private void divider(){View line=new View(this);line.setBackgroundColor(UiColors.BORDER);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(1));lp.topMargin=dp(8);lp.bottomMargin=dp(8);area.addView(line,lp);}
     private TextView linkRow(String heading,String detail,Runnable action,int icon){

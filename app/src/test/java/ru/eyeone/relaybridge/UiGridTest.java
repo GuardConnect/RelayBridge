@@ -14,6 +14,12 @@ public class UiGridTest {
  @Test public void narrowScreenKeepsLabelsSeparateFromSwitches() throws Exception {check(320,1f);}
  @Test public void referenceWidthCentersNavigation() throws Exception {check(390,1f);}
  @Test public void largeFontDoesNotOverlapSwitches() throws Exception {check(320,1.3f);}
+ @Test public void unconfirmedActivationKeepsSwitchOff() throws Exception {
+  try(var controller=Robolectric.buildActivity(MainActivity.class).setup()){
+   MainActivity activity=controller.get();java.lang.reflect.Field field=MainActivity.class.getDeclaredField("relayToggle");field.setAccessible(true);Switch toggle=(Switch)field.get(activity);
+   assertFalse(toggle.isChecked());toggle.setChecked(true);assertFalse("Unconfirmed activation must stay off",toggle.isChecked());assertFalse(ru.eyeone.relaybridge.Config.load(activity).enabled);
+  }
+ }
  private void check(int width,float font) throws Exception {
   try(var controller=Robolectric.buildActivity(MainActivity.class)){
    MainActivity activity=controller.get();Configuration config=new Configuration(activity.getResources().getConfiguration());config.fontScale=font;activity.getResources().updateConfiguration(config,activity.getResources().getDisplayMetrics());controller.setup();

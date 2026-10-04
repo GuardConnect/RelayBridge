@@ -54,8 +54,8 @@ final class HistoryView extends LinearLayout {
         int delivered=0,pending=0,failed=0;
         for(var r:rows){if(r.tg==0||r.mail==0)pending++;if(r.tg==3||r.mail==3)failed++;if((r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3)delivered++;}
         int[] counts={rows.size(),delivered,pending,failed};for(int i=0;i<counts.length;i++)counters[i].setText(String.valueOf(counts[i]));
-        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.TEXT:UiColors.SURFACE,on?UiColors.TEXT:UiColors.SURFACE));counters[i].setTextColor(on?UiColors.BACKGROUND:UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);}
-        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.TEXT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(typeFilter==i?UiColors.BACKGROUND:UiColors.TEXT);}
+        for(int i=0;i<4;i++){boolean on=i==selectedFilter;UiLayout.background(metricViews[i],background(on?UiColors.ACCENT:UiColors.SURFACE,on?UiColors.ACCENT:UiColors.SURFACE));counters[i].setTextColor(on?UiColors.BACKGROUND:UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);}
+        for(int i=0;i<3;i++){UiLayout.background(typeButtons[i],background(typeFilter==i?UiColors.ACCENT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(typeFilter==i?UiColors.BACKGROUND:UiColors.TEXT);}
         UiLayout.background(cards,background(UiColors.SURFACE,UiColors.BORDER));
         cards.removeAllViews();String q=search.getText().toString().toLowerCase(Locale.ROOT);int selected=selectedFilter,shown=0;
         for(var r:rows){boolean done=(r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3;
@@ -73,7 +73,7 @@ final class HistoryView extends LinearLayout {
             card.setFocusable(true);card.setContentDescription(r.kind+", Telegram "+QueueDb.label(r.tg)+", Email "+QueueDb.label(r.mail)+". Открыть подробности");card.setOnClickListener(v->details(r));
         }
         if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setTextColor(UiColors.MUTED);more.setBackgroundColor(UiColors.BACKGROUND);more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
-        if(shown==0)cards.addView(text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14));
+        if(shown==0){TextView empty=text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14);empty.setGravity(Gravity.CENTER);empty.setTextColor(UiColors.MUTED);empty.setPadding(dp(20),dp(32),dp(20),dp(32));cards.addView(empty,new LayoutParams(-1,-2));}
     }
     static String displayTitle(QueueDb.HistoryRow r){
         if(!r.body.startsWith("RelayBridge · "))return r.kind;int start=r.body.indexOf("\n\n");if(start<0)return r.kind;String data=r.body.substring(start+2);
