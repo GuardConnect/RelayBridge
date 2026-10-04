@@ -28,6 +28,15 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private int sectionTab=0,selectedTab=0;
     private HistoryView history;
     private ScrollView scroll;
+    private TextView brandTitle,recipientSummary,sourceSummary,lastEvent;
+    private Button activateButton;
+    private LinearLayout missingAccess,grantedAccess;
+    private TextView accessCount;
+    private View[] accessSegments=new View[7];
+    private String accessSignature="";
+    private long overviewRevision=-1;private boolean overviewLoading;
+    private final java.util.concurrent.ExecutorService overviewExecutor=Executors.newSingleThreadExecutor();
+
     private TextView status,journal,tgResult,mailResult,permissionStatus,simSummary,callSimSummary,overviewDetails,overviewReadiness;
     private CheckBox sms,calls,pushes,ongoing,tg,email;
     private EditText token,chat,host,port,user,password,from,to,templateField;
@@ -49,15 +58,16 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         Draft draft=getLastCustomNonConfigurationInstance() instanceof Draft?(Draft)getLastCustomNonConfigurationInstance():null;
         if(draft!=null)cfg=draft.config;
         LinearLayout shell=new LinearLayout(this);shell.setOrientation(LinearLayout.VERTICAL);shell.setBackgroundColor(UiColors.BACKGROUND);
-        LinearLayout brand=new LinearLayout(this);brand.setOrientation(LinearLayout.VERTICAL);brand.setPadding(dp(16),dp(10),dp(16),dp(8));shell.addView(brand);
+        LinearLayout brand=new LinearLayout(this);brand.setOrientation(LinearLayout.HORIZONTAL);brand.setGravity(Gravity.CENTER_VERTICAL);brand.setPadding(dp(16),dp(16),dp(16),dp(18));shell.addView(brand);
         scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);
         page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);page.setPadding(dp(16),0,dp(16),dp(16));page.setBackgroundColor(UiColors.BACKGROUND);
         scroll.addView(page);shell.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(shell);area=brand;
         shell.setOnApplyWindowInsetsListener((v,insets)->{Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;});
-        title("RelayBridge",24);note(BuildConfig.VERSION_NAME+" · TELEGRAM / SMTP").setTextSize(10);
+        brandTitle=new TextView(this);brandTitle.setText("RelayBridge");brandTitle.setTextSize(26);brandTitle.setTextColor(UiColors.TEXT);brandTitle.setTypeface(null,Typeface.BOLD);brand.addView(brandTitle,new LinearLayout.LayoutParams(0,-2,1));
+        TextView version=new TextView(this);version.setText("v"+BuildConfig.VERSION_NAME);version.setTextSize(13);version.setTypeface(Typeface.MONOSPACE);version.setTextColor(UiColors.MUTED);version.setPadding(dp(9),dp(5),dp(9),dp(5));version.setBackground(border(UiColors.BACKGROUND));brand.addView(version);
         navigation=new LinearLayout(this);navigation.setPadding(dp(12),dp(10),dp(12),dp(12));navigation.setBackgroundColor(UiColors.BACKGROUND);shell.addView(navigation);area=page;
         String[] tabs={"Обзор","Отправка","Доступ","Журнал"};
-        for(int i=0;i<tabs.length;i++){final int tab=i;Button button=new Button(this);button.setText(tabs[i]);button.setAllCaps(false);button.setTextSize(12);button.setMinWidth(0);button.setMinimumWidth(0);button.setPadding(0,0,0,0);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(46),1);if(i>0)lp.leftMargin=dp(6);navigation.addView(button,lp);button.setOnClickListener(v->selectTab(tab));}
+        for(int i=0;i<tabs.length;i++){final int tab=i;Button button=new Button(this);button.setText(tabs[i]);button.setAllCaps(false);button.setTextSize(11);button.setMinWidth(0);button.setMinimumWidth(0);button.setPadding(0,dp(4),0,dp(4));button.setCompoundDrawablePadding(dp(4));navigation.addView(button,new LinearLayout.LayoutParams(0,dp(58),1));button.setOnClickListener(v->selectTab(tab));}
         buildOverview();buildChannels();buildAccess();buildHistory();
         selectTab(draft==null?0:draft.tab);
         if(draft!=null){port.setText(draft.port);scroll.post(()->scroll.scrollTo(0,draft.scroll));}
@@ -73,72 +83,72 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         new AlertDialog.Builder(this).setTitle("Конфиденциальность RelayBridge").setView(view).setPositiveButton("Закрыть",null).show();
     }
     private void buildOverview(){
-        sectionTab=0;
-        section("Пересылка");status=note("");overviewDetails=note("");
-        button("Включить пересылку",this::activate);
+        sectionTab=0;section("Пересылка");status=note("");status.setTextSize(30);status.setTypeface(null,Typeface.BOLD);overviewDetails=note("");
+        activateButton=button("Включить пересылку",this::activate);
         secondary("Остановить и очистить очередь",()->{try{Indicator.stop(this);cfg.enabled=false;updateStatus();toast("Пересылка остановлена");}catch(Exception e){toast("Не удалось остановить пересылку");}});
-        section("Готовность");overviewReadiness=note("");
-        pair(()->secondary("Настроить отправку",()->selectTab(1)),()->secondary("Разрешения",()->selectTab(2)),1,1);
-
+        section("Готовность");recipientSummary=linkRow("Получатели","",()->selectTab(1),1);sourceSummary=linkRow("Источники","",()->selectTab(1),4);overviewReadiness=linkRow("Доступ","",()->selectTab(2),2);
+        section("Последнее событие");lastEvent=linkRow("События","После включения пересылки",()->selectTab(3),3);
     }
     private void buildChannels(){
-        sectionTab=1;section("SMS");sms=check("Входящие SMS",cfg.sms);
+        sectionTab=1;section("Источники");sms=check("Входящие SMS",cfg.sms);
         secondary("SIM для SMS",this::chooseSims);simSummary=note("");updateSimSummary();
-        section("Звонки");calls=check("Входящий звонок и номер",cfg.calls);
+        divider();calls=check("Входящие звонки",cfg.calls);
         secondary("SIM для звонков",()->chooseSims(true));callSimSummary=note("");updateSimSummary();
-        section("Уведомления приложений");pushes=check("Уведомления выбранных приложений",cfg.pushes);
-        note("В списке отображаются видимые Android приложения. Общий доступ к списку установленных пакетов не запрашивается.");
+        divider();pushes=check("Уведомления",cfg.pushes);
+        
         appsButton=secondary("Приложения · "+cfg.apps.size(),this::chooseApps);ongoing=check("Включать постоянные уведомления",cfg.ongoing);
 
-        section("Telegram");tg=check("Пересылать события в Telegram",cfg.telegram);
+        section("Получатели · Telegram");tg=check("Telegram",cfg.telegram);
         token=field("BotToken",cfg.token,true);chat=field("ChatID",cfg.chat,false);
         note("Сначала отправьте боту /start. Для группы нужен доступ бота к отправке.");
-        tgTestButton=button("Отправить тест в Telegram",()->testChannel(true));tgResult=note(ConnectionTests.telegramStatus);
+        tgTestButton=secondary("Отправить тест",()->testChannel(true));tgResult=note(ConnectionTests.telegramStatus);
 
-        section("Email / SMTP");email=check("Пересылать события на email",cfg.email);
-        subsection("Подключение");
+        section("Email / SMTP");email=check("Email / SMTP",cfg.email);
+        
         pair(()->host=field("SMTP сервер",cfg.host,false),()->{port=field("Порт",String.valueOf(cfg.port),false);port.setInputType(InputType.TYPE_CLASS_NUMBER);},2,1);
-        pair(()->{note("Шифрование");tls=new Spinner(this);tls.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"STARTTLS","SSL"}));tls.setSelection(cfg.tls.equals("SSL")?1:0);area.addView(tls);styleSpinner(tls);},
-            ()->{note("Авторизация");auth=new Spinner(this);String[] modes={"AUTO","LOGIN","PLAIN","NONE"};auth.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,modes));auth.setSelection(java.util.Arrays.asList(modes).indexOf(cfg.auth)<0?0:java.util.Arrays.asList(modes).indexOf(cfg.auth));area.addView(auth);styleSpinner(auth);},1,1);
-        subsection("Учётные данные");
+        note("Шифрование");tls=segments(new String[]{"STARTTLS","SSL"},cfg.tls);
+        note("Авторизация");auth=segments(new String[]{"AUTO","LOGIN","PLAIN","NONE"},cfg.auth);
         user=field("SMTP логин",cfg.user,false);password=field("Пароль SMTP",cfg.password,true);
-        subsection("Адреса письма");
+        
         from=field("Email отправителя",cfg.from,false);from.setHint("Пусто — SMTP логин");to=field("Email получателя",cfg.to,false);
-        subsection("Проверка и диагностика");
+        
         secondary("Помощь по SMTP",()->new AlertDialog.Builder(this).setTitle("Настройка SMTP").setMessage("STARTTLS обычно использует порт 587, SSL — 465. Уточняйте настройки у провайдера. AUTO выбирает LOGIN/PLAIN. NONE в авторизации — relay без входа; защищённое TLS-соединение обязательно. Принятие сервером не гарантирует попадание во Входящие — проверьте Спам.").setPositiveButton("Понятно",null).show());
         pair(()->secondary("Лог SMTP",this::showSmtpLog),()->secondary("Копировать лог",this::copySmtpLog),1,1);
-        mailTestButton=button("Отправить тестовое письмо SMTP",()->testChannel(false));mailResult=note(ConnectionTests.emailStatus);
+        mailTestButton=secondary("Тестовое письмо",()->testChannel(false));mailResult=note(ConnectionTests.emailStatus);
 
         section("Формат сообщений");note("Один шаблон для SMS, звонков и уведомлений в Telegram и SMTP.");
         templateField=new EditText(this);templateField.setId(viewId++);templateField.setText(cfg.messageTemplate);templateField.setTextSize(14);templateField.setTextColor(UiColors.TEXT);templateField.setBackground(border(UiColors.FIELD));templateField.setPadding(dp(12),dp(10),dp(12),dp(10));templateField.setGravity(Gravity.TOP|Gravity.START);templateField.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);templateField.setMinLines(4);templateField.setMaxLines(8);templateField.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4000)});area.addView(templateField,new LinearLayout.LayoutParams(-1,-2));
         pair(()->secondary("Предпросмотр",this::previewTemplate),()->secondary("По умолчанию",()->templateField.setText(MessageTemplate.DEFAULT)),1,1);
-        secondary("Переменные шаблона",this::templateHelp);
-        section("Настройки отправки");button("Сохранить настройки",()->save(false));
+        LinearLayout parent=area;LinearLayout chips=new LinearLayout(this);chips.setOrientation(LinearLayout.VERTICAL);parent.addView(chips);String[] variables={"time","date","type","data","title","message","number","sim","app","package"};
+        for(int row=0;row<4;row++){LinearLayout line=new LinearLayout(this);chips.addView(line);for(int j=row*3;j<Math.min(variables.length,row*3+3);j++){String value="{{"+variables[j]+"}}";TextView chip=new TextView(this);chip.setText(value);chip.setTextColor(UiColors.TEXT);chip.setTextSize(12);chip.setTypeface(Typeface.MONOSPACE);chip.setPadding(dp(8),dp(8),dp(8),dp(8));chip.setMinHeight(dp(40));chip.setBackground(border(UiColors.SUCCESS_BG));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.rightMargin=dp(6);lp.topMargin=dp(6);line.addView(chip,lp);chip.setOnClickListener(v->{int start=Math.max(0,templateField.getSelectionStart()),end=Math.max(start,templateField.getSelectionEnd());templateField.getText().replace(start,end,value);});}}
+        secondary("Справка по переменным",this::templateHelp);
+        section(" ");button("Сохранить настройки",()->save(false));
     }
     private void buildAccess(){
-        sectionTab=2;section("Проверка доступа");permissionStatus=note("");
-        section("Ограничения Android");
-        secondary("Открыть карточку приложения / ограничения",()->openAppSettings());
-        secondary("Почему Android блокирует разрешения?",this::permissionHelp);
-        note("Ограниченные разрешения и предупреждения Play Protect регулирует Android.");
-
-        section("SMS и телефон");
-        button("Разрешить получение новых SMS",()->requestAccess(PermissionRequests.SMS));
-        button("Разрешить состояние телефона и список SIM",()->requestAccess(PermissionRequests.PHONE));
-        button("Разрешить журнал звонков для номера",()->requestAccess(PermissionRequests.CALL_LOG));
-        section("Уведомления");
-        button("Разрешить доступ к уведомлениям",()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
-        secondary("Переподключить службу уведомлений",this::reconnectListener);
-        button("Разрешить уведомление о работе",()->requestAccess(PermissionRequests.STATUS));
-        section("Работа в фоне");
-        button("Разрешить работу в фоне без ограничений",this::requestUnrestrictedBackground);
-        button("Отключить приостановку в неактивный период",this::manageUnusedApp);
-        button("Настройки оптимизации батареи",()->open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
-        note("Первая кнопка запрашивает исключение из оптимизации для RelayBridge; настройки оптимизации открывают общий список. Режим «Без ограничений» и автозапуск могут дополнительно настраиваться в карточке приложения и зависят от прошивки.");
-        secondary("О фоновой работе",()->new AlertDialog.Builder(this).setTitle("Работа в фоне").setMessage("Разрешите исключение из оптимизации батареи. В карточке RelayBridge отключите приостановку неиспользуемого приложения и включите Автозапуск, если он предусмотрен прошивкой. Отдельного разрешения на низкий заряд нет. Система может задерживать фоновые задания. После принудительной остановки откройте приложение снова. Эти переключатели изменяются в системных настройках.").setPositiveButton("Понятно",null).show());
+        sectionTab=2;section("Проверка доступа");area.setBackgroundColor(UiColors.BACKGROUND);area.setPadding(0,0,0,0);permissionStatus=note("");accessCount=permissionStatus;accessCount.setTextSize(26);accessCount.setTypeface(null,Typeface.BOLD);accessCount.setTextColor(UiColors.TEXT);
+        LinearLayout progress=new LinearLayout(this);area.addView(progress);for(int i=0;i<7;i++){View bar=new View(this);accessSegments[i]=bar;LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(4),1);lp.setMargins(0,dp(8),dp(4),dp(8));progress.addView(bar,lp);}
+        section("Нужно выдать");missingAccess=area;missingAccess.setBackgroundColor(UiColors.BACKGROUND);missingAccess.setPadding(0,0,0,0);
+        section("Уже выдано");grantedAccess=area;
+        section("Системные настройки");
+        linkRow("Переподключить службу уведомлений","",this::reconnectListener,6);
+        linkRow("Приостановка при неактивности","",this::manageUnusedApp,2);
+        linkRow("Оптимизация батареи","",()->open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)),2);
+        linkRow("Карточка приложения","",this::openAppSettings,2);
+        linkRow("Почему Android блокирует разрешения?","",this::permissionHelp,2);
+        secondary("О фоновой работе",()->new AlertDialog.Builder(this).setTitle("Работа в фоне").setMessage("Система может задерживать фоновые задания. Разрешите исключение из оптимизации батареи и проверьте автозапуск в настройках прошивки. После принудительной остановки откройте приложение снова.").setPositiveButton("Понятно",null).show());
+    }
+    private void updateAccess(boolean[] flags){
+        String key=Arrays.toString(flags)+RelayListener.connected;if(key.equals(accessSignature))return;accessSignature=key;
+        missingAccess.removeAllViews();grantedAccess.removeAllViews();LinearLayout old=area;
+        String[] labels={"Получение SMS","Состояние телефона и SIM","Журнал звонков","Доступ к уведомлениям","Уведомления приложения","Уведомление о работе","Работа без ограничений"};
+        String[] hints={"Для новых входящих SMS.","Для звонков и выбора SIM.","Для номера входящего звонка. Без него номер может быть недоступен.","Для уведомлений выбранных приложений.","Для отображения состояния RelayBridge.","Разрешите уведомления RelayBridge и канал состояния.","Исключение из оптимизации батареи для фоновой доставки."};
+        Runnable[] actions={()->requestAccess(PermissionRequests.SMS),()->requestAccess(PermissionRequests.PHONE),()->requestAccess(PermissionRequests.CALL_LOG),()->open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),()->requestAccess(PermissionRequests.STATUS),this::openStatusNotificationSettings,this::requestUnrestrictedBackground};
+        int count=0;for(int i=0;i<flags.length;i++){if(flags[i]){count++;area=grantedAccess;TextView row=note("✓  "+labels[i]+(i==3&&RelayListener.connected?" · подключена":""));row.setTextColor(UiColors.TEXT);row.setTextSize(15);row.setPadding(0,dp(14),0,dp(14));divider();}else{LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));card.setBackground(border(UiColors.SURFACE));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);missingAccess.addView(card,lp);area=card;title(labels[i],17);note(hints[i]);makeButton("Разрешить",actions[i],true);}}
+        if(count==7){area=missingAccess;note("Все разрешения выданы");}if(count==0){area=grantedAccess;note("Выданных разрешений пока нет");}
+        accessCount.setText(count==7?"Всё готово · 7 / 7":"Осталось "+(7-count)+" · "+count+" / 7");for(int i=0;i<7;i++)accessSegments[i].setBackgroundColor(i<count?UiColors.ACCENT:UiColors.BORDER);area=old;
     }
     private void buildHistory(){
-        sectionTab=3;section("История передачи");journal=note("");
+        sectionTab=3;section(" ");journal=note("");journal.setVisibility(View.GONE);area.setPadding(0,0,0,0);area.setBackgroundColor(UiColors.BACKGROUND);
         history=new HistoryView(this);area.addView(history,new LinearLayout.LayoutParams(-1,-2));
         section("Очередь и данные");
         secondary("Конфиденциальность",this::privacy);
@@ -216,31 +226,29 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             boolean smsReady=granted(Manifest.permission.RECEIVE_SMS),phoneReady=granted(Manifest.permission.READ_PHONE_STATE),notificationsReady=listenerGranted();
             String listener=notificationsReady?(RelayListener.connected?"подключена":"доступ разрешён; служба не подключена"):"доступ не выдан / ограничен";
             PowerManager pm=getSystemService(PowerManager.class);
-            String state=cfg.enabled?"● Пересылка активна":"● Пересылка остановлена";
+            String state=cfg.enabled?"● Активна":"○ Остановлена";
             android.text.SpannableStringBuilder overview=new android.text.SpannableStringBuilder(state);
             overview.setSpan(new android.text.style.ForegroundColorSpan(cfg.enabled?UiColors.SUCCESS:UiColors.ERROR),0,state.length(),android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            status.setText(overview);status.setTextColor(UiColors.MUTED);status.setTextSize(18);status.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
-            overviewDetails.setText((stored.telegram||stored.email?"Отправка: "+(stored.telegram?"Telegram":"")+(stored.telegram&&stored.email?" · ":"")+(stored.email?"SMTP":""):"Отправка не настроена")+"\nПриложений: "+stored.apps.size());
+            status.setText(overview);status.setTextColor(UiColors.MUTED);status.setTextSize(30);status.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
+            String routes=(stored.telegram?"Telegram":"")+(stored.telegram&&stored.email?" · ":"")+(stored.email?"Email":"");int sources=(stored.sms?1:0)+(stored.calls?1:0)+(stored.pushes?1:0);
+            overviewDetails.setText((routes.isEmpty()?"Получатели не выбраны":routes)+" — источников: "+sources);activateButton.setVisibility(cfg.enabled?View.GONE:View.VISIBLE);
+            recipientSummary.setText(routes.isEmpty()?"Настройте получателей":routes);sourceSummary.setText((stored.sms?"SMS · ":"")+(stored.calls?"Звонки · ":"")+(stored.pushes?stored.apps.size()+" приложений":"Уведомления выключены"));
             List<String> missing=new ArrayList<>();if(stored.sms&&!smsReady)missing.add("SMS");if(stored.calls&&!phoneReady)missing.add("телефон");if(stored.calls&&!granted(Manifest.permission.READ_CALL_LOG))missing.add("номер звонка");if(stored.pushes&&!notificationsReady)missing.add("уведомления");
             boolean channelReady=stored.telegram||stored.email;overviewReadiness.setText(!channelReady?"Настройте отправку и выполните тест.":missing.isEmpty()?"Доступ к выбранным источникам разрешён.":"Нужен доступ: "+String.join(", ",missing));overviewReadiness.setTextColor(channelReady&&missing.isEmpty()?UiColors.SUCCESS:UiColors.PENDING);
-            android.text.SpannableStringBuilder access=new android.text.SpannableStringBuilder();
-            permissionLine(access,"Получение SMS",smsReady,null);
-            permissionLine(access,"Состояние телефона",phoneReady,null);
-            permissionLine(access,"Журнал звонков / номер",granted(Manifest.permission.READ_CALL_LOG),null);
-            permissionLine(access,"Доступ к уведомлениям",notificationsReady,null);
-            permissionLine(access,"Разрешение уведомлений приложения",granted(Manifest.permission.POST_NOTIFICATIONS),null);
-            permissionLine(access,"Уведомление о работе (приложение и канал)",Indicator.allowed(this),null);
-            permissionLine(access,"Без оптимизации батареи",pm.isIgnoringBatteryOptimizations(getPackageName()),null);
-            if(notificationsReady){int begin=access.length();access.append("Служба уведомлений: ").append(RelayListener.connected?"подключена":"ожидает подключения");access.setSpan(new android.text.style.ForegroundColorSpan(RelayListener.connected?UiColors.SUCCESS:UiColors.PENDING),begin,access.length(),android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);}
-            permissionStatus.setText(access);permissionStatus.setTextColor(UiColors.MUTED);permissionStatus.setLineSpacing(dp(7),1f);
+            updateAccess(new boolean[]{smsReady,phoneReady,granted(Manifest.permission.READ_CALL_LOG),notificationsReady,granted(Manifest.permission.POST_NOTIFICATIONS),Indicator.allowed(this),pm.isIgnoringBatteryOptimizations(getPackageName())});
             long last=Config.prefs(this).getLong("last-capture",0);
             String received=last>0?"Последнее событие: "+android.text.format.DateFormat.format("dd.MM HH:mm:ss",last)+"\n\n":"Новых событий в очереди пока нет.\n\n";
             journal.setText(received+Config.prefs(this).getString("fault",""));
-            if(selectedTab==3)history.refresh();
+            if(selectedTab==3)history.refresh();if(selectedTab==0)refreshLastEvent();
             tgResult.setText(ConnectionTests.telegramStatus);mailResult.setText(ConnectionTests.emailStatus);
             tgTestButton.setEnabled(!ConnectionTests.telegramRunning);mailTestButton.setEnabled(!ConnectionTests.emailRunning);
         }catch(Exception e){status.setText("Ошибка чтения настроек. Закройте и снова откройте приложение.");}
     }
+    private void refreshLastEvent(){
+        long revision=QueueDb.get(this).revision();if(overviewLoading||revision==overviewRevision||overviewExecutor.isShutdown())return;overviewLoading=true;
+        overviewExecutor.execute(()->{try{List<QueueDb.HistoryRow> rows=QueueDb.get(this).history();runOnUiThread(()->{overviewLoading=false;overviewRevision=revision;if(isDestroyed()||lastEvent==null)return;TextView heading=(TextView)((LinearLayout)lastEvent.getParent()).getChildAt(0);if(rows.isEmpty()){heading.setText("Новых событий пока нет");lastEvent.setText("Включите пересылку для захвата событий");}else{QueueDb.HistoryRow r=rows.get(0);heading.setText(HistoryView.displayTitle(r));lastEvent.setText(android.text.format.DateFormat.format("HH:mm · dd.MM",r.created)+" · Telegram: "+QueueDb.label(r.tg)+" · Email: "+QueueDb.label(r.mail));}});}catch(Exception e){runOnUiThread(()->overviewLoading=false);}});
+    }
+    @Override protected void onDestroy(){overviewExecutor.shutdownNow();super.onDestroy();}
     private void permissionLine(android.text.SpannableStringBuilder out,String label,boolean allowed,String detail){
         out.append(label).append(": ");int begin=out.length();out.append(allowed?"● разрешено":"● не выдано");
         out.setSpan(new android.text.style.ForegroundColorSpan(allowed?UiColors.SUCCESS:UiColors.ERROR),begin,out.length(),android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);out.append("\n");
@@ -422,17 +430,34 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private void title(String text,int size){TextView label=note(text);label.setTextSize(size);label.setTextColor(UiColors.TEXT);label.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));label.setPadding(0,0,0,dp(4));}
     private void section(String caption){
-        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setTextSize(11);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(dp(2),dp(12),0,dp(6));
-        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(12),dp(10),dp(12),dp(12));card.setBackground(border(UiColors.SURFACE));page.addView(card,new LinearLayout.LayoutParams(-1,-2));sections.add(heading);sectionTabs.add(sectionTab);sections.add(card);sectionTabs.add(sectionTab);area=card;
+        area=page;TextView heading=note(caption.toUpperCase(Locale.ROOT));heading.setTextSize(11);heading.setLetterSpacing(0.12f);heading.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));heading.setPadding(0,dp(22),0,dp(10));if(caption.isBlank())heading.setVisibility(View.GONE);
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(14),dp(16),dp(14));card.setBackground(border(UiColors.SURFACE));page.addView(card,new LinearLayout.LayoutParams(-1,-2));sections.add(heading);sectionTabs.add(sectionTab);sections.add(card);sectionTabs.add(sectionTab);area=card;
     }
     private void selectTab(int tab){
-        selectedTab=tab;for(int i=0;i<sections.size();i++)sections.get(i).setVisibility(sectionTabs.get(i)==tab?View.VISIBLE:View.GONE);
-        for(int i=0;i<navigation.getChildCount();i++){Button button=(Button)navigation.getChildAt(i);button.setTextColor(i==tab?UiColors.BACKGROUND:UiColors.MUTED);button.setBackground(border(i==tab?UiColors.TEXT:UiColors.SURFACE));}
+        selectedTab=tab;if(brandTitle!=null)brandTitle.setText(new String[]{"RelayBridge","Отправка","Доступ","Журнал"}[tab]);for(int i=0;i<sections.size();i++)sections.get(i).setVisibility(sectionTabs.get(i)==tab&&!(sections.get(i) instanceof TextView&&((TextView)sections.get(i)).getText().toString().isBlank())?View.VISIBLE:View.GONE);
+        for(int i=0;i<navigation.getChildCount();i++){Button button=(Button)navigation.getChildAt(i);button.setTextColor(i==tab?UiColors.ACCENT:UiColors.MUTED);button.setBackgroundColor(UiColors.BACKGROUND);UiIcon icon=new UiIcon(i,i==tab?UiColors.ACCENT:UiColors.MUTED,getResources().getDisplayMetrics().density);button.setCompoundDrawablesWithIntrinsicBounds(null,icon,null,null);}
         scroll.smoothScrollTo(0,0);if(tab==3&&history!=null)history.refresh();
     }
-    private GradientDrawable border(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(14));d.setStroke(dp(1),UiColors.BORDER);return d;}
+    private GradientDrawable border(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(16));d.setStroke(dp(1),UiColors.BORDER);return d;}
     private TextView note(String text){TextView t=new TextView(this);t.setText(text);t.setTextSize(13);t.setTextColor(UiColors.MUTED);t.setLineSpacing(dp(3),1);t.setPadding(0,dp(4),0,dp(6));area.addView(t);return t;}
-    private CheckBox check(String text,boolean value){CheckBox box=new CheckBox(this);box.setText(text);box.setTextSize(14);box.setTextColor(UiColors.TEXT);box.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{UiColors.TEXT,UiColors.MUTED}));box.setChecked(value);box.setMinHeight(dp(48));area.addView(box);return box;}
+    private CheckBox check(String text,boolean value){
+        CheckBox box=new CheckBox(this);box.setText(text);box.setTextSize(15);box.setTextColor(UiColors.TEXT);box.setTypeface(null,Typeface.BOLD);box.setButtonDrawable((Drawable)null);int icon=text.contains("SMS")?4:text.contains("звон")?5:text.equals("Уведомления")?6:text.equals("Telegram")?1:text.equals("Email / SMTP")?7:-1;if(icon>=0){box.setCompoundDrawablesWithIntrinsicBounds(new UiIcon(icon,UiColors.TEXT,getResources().getDisplayMetrics().density),null,null,null);box.setCompoundDrawablePadding(dp(12));}box.setPadding(0,0,dp(58),0);box.setChecked(value);box.setMinHeight(dp(52));
+        Drawable toggle=new Drawable(){public void draw(Canvas canvas){Rect bounds=getBounds();float x=bounds.right-dp(48),y=bounds.centerY()-dp(14);Paint paint=new Paint(3);paint.setColor(box.isChecked()?UiColors.ACCENT:UiColors.BORDER);canvas.drawRoundRect(x,y,x+dp(48),y+dp(28),dp(14),dp(14),paint);paint.setColor(box.isChecked()?UiColors.BACKGROUND:UiColors.MUTED);canvas.drawCircle(x+dp(box.isChecked()?34:14),y+dp(14),dp(10),paint);}public void setAlpha(int a){}public void setColorFilter(ColorFilter f){}public int getOpacity(){return PixelFormat.TRANSLUCENT;}};
+        box.setBackground(toggle);box.setOnCheckedChangeListener((v,on)->box.invalidate());area.addView(box,new LinearLayout.LayoutParams(-1,dp(52)));return box;
+    }
+    private void divider(){View line=new View(this);line.setBackgroundColor(UiColors.BORDER);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(1));lp.topMargin=dp(8);lp.bottomMargin=dp(8);area.addView(line,lp);}
+    private TextView linkRow(String heading,String detail,Runnable action,int icon){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,dp(10),0,dp(10));area.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        ImageView image=new ImageView(this);image.setImageDrawable(new UiIcon(icon,UiColors.TEXT,getResources().getDisplayMetrics().density));image.setPadding(dp(10),dp(10),dp(10),dp(10));image.setBackground(border(UiColors.SUCCESS_BG));row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));
+        LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);row.addView(words,lp);LinearLayout old=area;area=words;title(heading,16);TextView subtitle=note(detail);area=old;
+        TextView arrow=new TextView(this);arrow.setText("›");arrow.setTextSize(28);arrow.setTextColor(UiColors.MUTED);row.addView(arrow);row.setFocusable(true);row.setOnClickListener(v->action.run());return subtitle;
+    }
+    private Spinner segments(String[] values,String selected){
+        Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));int pos=Arrays.asList(values).indexOf(selected);spinner.setSelection(Math.max(0,pos));spinner.setVisibility(View.GONE);area.addView(spinner);
+        LinearLayout row=new LinearLayout(this);row.setPadding(dp(3),dp(3),dp(3),dp(3));row.setBackground(border(UiColors.FIELD));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(10);area.addView(row,lp);
+        Runnable paint=()->{for(int k=0;k<row.getChildCount();k++){Button button=(Button)row.getChildAt(k);boolean on=k==spinner.getSelectedItemPosition();button.setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);button.setBackground(border(on?UiColors.TEXT:UiColors.FIELD));}};
+        for(int k=0;k<values.length;k++){final int index=k;Button button=new Button(this);button.setText(values[k]);button.setTextSize(11);button.setAllCaps(false);button.setPadding(0,0,0,0);button.setMinWidth(0);button.setMinimumWidth(0);row.addView(button,new LinearLayout.LayoutParams(0,-1,1));button.setOnClickListener(v->{spinner.setSelection(index);paint.run();});}paint.run();return spinner;
+    }
     private void styleSpinner(Spinner spinner){spinner.setBackground(border(UiColors.FIELD));spinner.setPadding(dp(10),0,dp(10),0);spinner.setMinimumHeight(dp(48));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(8);spinner.setLayoutParams(lp);}
     private EditText field(String label,String value,boolean secret){
         note(label).setTextSize(12);EditText input=new EditText(this);input.setId(viewId++);input.setSingleLine();input.setText(value);input.setTextSize(15);input.setTextColor(UiColors.TEXT);input.setHintTextColor(UiColors.MUTED);input.setTextDirection(View.TEXT_DIRECTION_LTR);input.setBackground(border(UiColors.FIELD));input.setPadding(dp(14),0,dp(14),0);input.setInputType(InputType.TYPE_CLASS_TEXT|(secret?InputType.TYPE_TEXT_VARIATION_PASSWORD:InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
@@ -441,5 +466,5 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
     private Button button(String caption,Runnable action){return makeButton(caption,action,sectionTab!=2);}
     private Button secondary(String caption,Runnable action){return makeButton(caption,action,false);}
-    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(primary?UiColors.BACKGROUND:UiColors.TEXT);button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22777777),border(primary?UiColors.TEXT:UiColors.FIELD),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
+    private Button makeButton(String caption,Runnable action,boolean primary){Button button=new Button(this);button.setText(caption);button.setAllCaps(false);button.setTextSize(14);button.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));button.setTextColor(primary?UiColors.BACKGROUND:UiColors.TEXT);button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22777777),border(primary?UiColors.ACCENT:UiColors.SURFACE),border(UiColors.TEXT)));button.setMinWidth(0);button.setMinimumWidth(0);button.setMinHeight(dp(48));button.setPadding(dp(10),dp(8),dp(10),dp(8));button.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(3);lp.bottomMargin=dp(3);area.addView(button,lp);return button;}
 }

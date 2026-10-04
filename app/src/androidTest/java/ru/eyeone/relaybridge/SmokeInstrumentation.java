@@ -26,7 +26,7 @@ public class SmokeInstrumentation extends Instrumentation {
             runOnMainSync(()->{
                 EditText token=screen.findViewById(2000);
                 check(token!=null,"Telegram field missing");
-                check(findText(screen.getWindow().getDecorView(),BuildConfig.VERSION_NAME+" · TELEGRAM / SMTP")!=null,"Header version differs from installed package");
+                check(findText(screen.getWindow().getDecorView(),"v"+BuildConfig.VERSION_NAME)!=null,"Header version differs from installed package");
                 try{check(c.getPackageManager().getPackageInfo(c.getPackageName(),0).versionName.equals(BuildConfig.VERSION_NAME),"BuildConfig version differs from package version");}catch(android.content.pm.PackageManager.NameNotFoundException e){throw new AssertionError(e);}
                 check(token.getCurrentTextColor()==UiColors.TEXT,"Dark theme field contrast missing");
             });pass("MainActivity launches with dark theme fields");
@@ -36,7 +36,7 @@ public class SmokeInstrumentation extends Instrumentation {
                 ((EditText)screen.findViewById(2005)).setText("abcd\u00a0efgh\u202fijkl\nmnop");
                 ((EditText)screen.findViewById(2006)).setText("");
                 ((EditText)screen.findViewById(2007)).setText("receiver@example.com");
-                CheckBox email=(CheckBox)findText(screen.getWindow().getDecorView(),"Пересылать события на email");
+                CheckBox email=(CheckBox)findText(screen.getWindow().getDecorView(),"Email / SMTP");
                 check(email!=null,"Email toggle missing");email.setChecked(true);
                 View save=findText(screen.getWindow().getDecorView(),"Сохранить настройки");
                 check(save!=null,"Save button missing");save.performClick();
@@ -61,9 +61,9 @@ public class SmokeInstrumentation extends Instrumentation {
             db.update(id,"mail",1);db.redactDone(id);check(db.event(id)==null,"Completed event remains pending");
             pass("Encrypted queue, deduplication, destination snapshot, independent channel statuses");
             runOnMainSync(()->{
-                check(findText(screen.getWindow().getDecorView(),"Отправить тест в Telegram")!=null,"Telegram test button missing");
-                check(findText(screen.getWindow().getDecorView(),"Отправить тестовое письмо SMTP")!=null,"SMTP test button missing");
-                check(findText(screen.getWindow().getDecorView(),"Открыть карточку приложения / ограничения")!=null,"Restricted-settings link missing");
+                check(findText(screen.getWindow().getDecorView(),"Отправить тест")!=null,"Telegram test button missing");
+                check(findText(screen.getWindow().getDecorView(),"Тестовое письмо")!=null,"SMTP test button missing");
+                check(findText(screen.getWindow().getDecorView(),"Карточка приложения")!=null,"Restricted-settings link missing");
             });pass("Independent Telegram/SMTP test controls and restricted-settings help exist");
             runOnMainSync(()->{
                 View choice=findPrefix(screen.getWindow().getDecorView(),"Приложения ·");
@@ -95,6 +95,7 @@ public class SmokeInstrumentation extends Instrumentation {
             });
             Thread.sleep(800);capture(screen,"overview.png");
             runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Отправка").performClick());Thread.sleep(500);capture(screen,"channels.png");
+            runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Доступ").performClick());Thread.sleep(500);capture(screen,"access.png");
             long mock=db.add("visual-notification","Уведомление","RelayBridge · Уведомление\n2026-10-04 07:00\n\nSignal (org.thoughtcrime.securesms)\nТест интерфейса\nСообщение передано в выбранные каналы.",route);db.update(mock,"tg",1);db.update(mock,"mail",1);db.redactDone(mock);
             runOnMainSync(()->findText(screen.getWindow().getDecorView(),"Журнал").performClick());Thread.sleep(1000);capture(screen,"history.png");
             runOnMainSync(()->screen.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE));

@@ -16,7 +16,10 @@ final class HistoryView extends LinearLayout {
     private final LinearLayout cards;
     private final TextView[] counters=new TextView[4];
     private final EditText search;
-    private final Spinner filter;
+    private int selectedFilter=0,typeFilter=-1;
+    private final TextView[] metricCaptions=new TextView[4];
+    private final LinearLayout[] metricViews=new LinearLayout[4];
+    private final Button[] typeButtons=new Button[3];
     private final ExecutorService executor=Executors.newSingleThreadExecutor();
     private List<QueueDb.HistoryRow> rows=Collections.emptyList();
     private boolean loading;
@@ -26,17 +29,16 @@ final class HistoryView extends LinearLayout {
     HistoryView(Activity c){
         super(c);activity=c;setOrientation(VERTICAL);
         summary=text("Загрузка журнала…",12);summary.setTextColor(UiColors.MUTED);
-        String[] labels={"Всего событий","Доставлено","В очереди","С ошибками"};int[] colors={UiColors.TEXT,UiColors.SUCCESS,UiColors.PENDING,UiColors.ERROR};int[] backgrounds={UiColors.FIELD,UiColors.SUCCESS_BG,UiColors.PENDING_BG,UiColors.ERROR_BG};
-        for(int row=0;row<2;row++){LinearLayout line=new LinearLayout(c);LayoutParams lineParams=new LayoutParams(-1,-2);lineParams.bottomMargin=dp(8);addView(line,lineParams);
-            for(int col=0;col<2;col++){int i=row*2+col;LinearLayout metric=new LinearLayout(c);metric.setOrientation(VERTICAL);metric.setPadding(dp(14),dp(12),dp(14),dp(12));metric.setBackground(background(backgrounds[i],UiColors.BORDER));LayoutParams params=new LayoutParams(0,-2,1);if(col>0)params.leftMargin=dp(8);line.addView(metric,params);
-                counters[i]=text("0",28);counters[i].setTypeface(null,Typeface.BOLD);counters[i].setTextColor(colors[i]);metric.addView(counters[i]);TextView caption=text(labels[i],12);caption.setTextColor(UiColors.MUTED);metric.addView(caption);
-            }
-        }addView(summary);
-        search=new EditText(c);search.setHint("Поиск по типу и содержимому");search.setSingleLine();search.setTextColor(UiColors.TEXT);search.setHintTextColor(UiColors.MUTED);search.setBackgroundTintList(android.content.res.ColorStateList.valueOf(UiColors.MUTED));addView(search);
-        filter=new Spinner(c);filter.setAdapter(new ArrayAdapter<>(c,android.R.layout.simple_spinner_dropdown_item,new String[]{"Все события","Доставлено","Ожидает отправки","Ошибки"}));addView(filter);
+        String[] labels={"Все","Доставлено","В очереди","Ошибки"};
+        LinearLayout metrics=new LinearLayout(c);metrics.setPadding(dp(4),dp(4),dp(4),dp(4));metrics.setBackground(background(UiColors.SURFACE,UiColors.BORDER));addView(metrics,new LayoutParams(-1,-2));
+        for(int i=0;i<4;i++){final int index=i;LinearLayout metric=new LinearLayout(c);metricViews[i]=metric;metric.setOrientation(VERTICAL);metric.setGravity(Gravity.CENTER);metric.setPadding(dp(2),dp(8),dp(2),dp(8));metrics.addView(metric,new LayoutParams(0,-2,1));counters[i]=text("0",22);counters[i].setTypeface(null,Typeface.BOLD);metric.addView(counters[i]);metricCaptions[i]=text(labels[i],10);metric.addView(metricCaptions[i]);metric.setFocusable(true);metric.setOnClickListener(v->{selectedFilter=index;limit=50;render();});}
+        search=new EditText(c);search.setHint("Поиск по событиям");search.setSingleLine();search.setTextSize(14);search.setTextColor(UiColors.TEXT);search.setHintTextColor(UiColors.MUTED);search.setPadding(dp(12),0,dp(12),0);search.setBackground(background(UiColors.FIELD,UiColors.BORDER));LayoutParams searchLp=new LayoutParams(-1,dp(48));searchLp.topMargin=dp(10);addView(search,searchLp);
+        LinearLayout types=new LinearLayout(c);LayoutParams typeLp=new LayoutParams(-1,-2);typeLp.topMargin=dp(10);typeLp.bottomMargin=dp(12);addView(types,typeLp);String[] names={"SMS","Звонки","Уведомления"};
+        for(int i=0;i<3;i++){final int index=i;Button button=new Button(c);typeButtons[i]=button;button.setText(names[i]);button.setAllCaps(false);button.setTextSize(11);button.setMinimumWidth(0);button.setMinWidth(0);button.setPadding(dp(4),0,dp(4),0);LayoutParams lp=new LayoutParams(0,dp(44),1);if(i>0)lp.leftMargin=dp(6);types.addView(button,lp);button.setOnClickListener(v->{typeFilter=typeFilter==index?-1:index;limit=50;render();});}
+        summary.setVisibility(GONE);addView(summary);
         cards=new LinearLayout(c);cards.setOrientation(VERTICAL);addView(cards);
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int n,int a){}public void afterTextChanged(Editable e){}public void onTextChanged(CharSequence s,int st,int b,int n){render();}});
-        filter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){render();}});
+
     }
     void refresh(){
         if(loading||activity.isDestroyed()||executor.isShutdown())return;
@@ -52,25 +54,32 @@ final class HistoryView extends LinearLayout {
         int delivered=0,pending=0,failed=0;
         for(var r:rows){if(r.tg==0||r.mail==0)pending++;if(r.tg==3||r.mail==3)failed++;if((r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3)delivered++;}
         int[] counts={rows.size(),delivered,pending,failed};for(int i=0;i<counts.length;i++)counters[i].setText(String.valueOf(counts[i]));
-        summary.setText("События в сохранённом журнале · статусы отправки");
-        cards.removeAllViews();String q=search.getText().toString().toLowerCase(Locale.ROOT);int selected=filter.getSelectedItemPosition(),shown=0;
+        for(int i=0;i<4;i++){boolean on=i==selectedFilter;metricViews[i].setBackground(background(on?UiColors.TEXT:UiColors.SURFACE,on?UiColors.TEXT:UiColors.SURFACE));counters[i].setTextColor(on?UiColors.BACKGROUND:UiColors.TEXT);metricCaptions[i].setTextColor(on?UiColors.BACKGROUND:UiColors.MUTED);}
+        for(int i=0;i<3;i++){typeButtons[i].setBackground(background(typeFilter==i?UiColors.TEXT:UiColors.SUCCESS_BG,UiColors.BORDER));typeButtons[i].setTextColor(typeFilter==i?UiColors.BACKGROUND:UiColors.TEXT);}
+        cards.setBackground(background(UiColors.SURFACE,UiColors.BORDER));
+        cards.removeAllViews();String q=search.getText().toString().toLowerCase(Locale.ROOT);int selected=selectedFilter,shown=0;
         for(var r:rows){boolean done=(r.tg==1||r.mail==1)&&r.tg!=0&&r.mail!=0&&r.tg!=3&&r.mail!=3;
             if(selected==1&&!done||selected==2&&r.tg!=0&&r.mail!=0||selected==3&&r.tg!=3&&r.mail!=3)continue;
+            int kind=r.kind.contains("SMS")?0:r.kind.contains("звонок")?1:2;if(typeFilter>=0&&kind!=typeFilter)continue;
             if(!(r.kind+" "+r.body).toLowerCase(Locale.ROOT).contains(q))continue;
-            shown++;if(shown>limit)continue;LinearLayout card=new LinearLayout(activity);card.setOrientation(VERTICAL);card.setPadding(dp(12),dp(12),dp(12),dp(12));
-            GradientDrawable bg=new GradientDrawable();bg.setColor(UiColors.FIELD);bg.setCornerRadius(dp(12));bg.setStroke(dp(1),UiColors.BORDER);card.setBackground(bg);
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(10);cards.addView(card,lp);
-            TextView heading=text(r.kind,15);heading.setTypeface(null,Typeface.BOLD);card.addView(heading);
-            TextView time=text(android.text.format.DateFormat.format("dd.MM.yyyy · HH:mm",r.created).toString(),11);time.setTextColor(UiColors.MUTED);card.addView(time);
-            int start=r.body.startsWith("RelayBridge · ")?r.body.indexOf("\n\n"):-1;
-            TextView preview=text(start>=0?r.body.substring(start+2):r.body,14);preview.setMaxLines(3);preview.setEllipsize(TextUtils.TruncateAt.END);card.addView(preview);
-            LinearLayout badges=new LinearLayout(activity);badges.setOrientation(VERTICAL);card.addView(badges);
-            badges.addView(badge("Telegram",r.tg));badges.addView(badge("Email",r.mail));
-            if(!r.error.isEmpty()){TextView error=text(r.error,12);error.setTextColor(UiColors.ERROR);error.setMaxLines(2);error.setEllipsize(TextUtils.TruncateAt.END);card.addView(error);}
+            shown++;if(shown>limit)continue;LinearLayout card=new LinearLayout(activity);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(14),dp(14),dp(14),dp(14));
+            if(cards.getChildCount()>0){View line=new View(activity);line.setBackgroundColor(UiColors.BORDER);cards.addView(line,new LayoutParams(-1,dp(1)));}cards.addView(card,new LayoutParams(-1,-2));
+            ImageView icon=new ImageView(activity);icon.setImageDrawable(new UiIcon(kind==0?4:kind==1?5:6,UiColors.TEXT,getResources().getDisplayMetrics().density));icon.setPadding(dp(10),dp(10),dp(10),dp(10));icon.setBackground(background(UiColors.SUCCESS_BG,UiColors.SUCCESS_BG));card.addView(icon,new LayoutParams(dp(40),dp(40)));
+            LinearLayout words=new LinearLayout(activity);words.setOrientation(VERTICAL);LayoutParams wordLp=new LayoutParams(0,-2,1);wordLp.leftMargin=dp(12);wordLp.rightMargin=dp(6);card.addView(words,wordLp);
+            TextView heading=text(displayTitle(r),14);heading.setTypeface(null,Typeface.BOLD);heading.setMaxLines(1);heading.setEllipsize(TextUtils.TruncateAt.END);words.addView(heading);
+            boolean failedRow=r.tg==3||r.mail==3,pendingRow=r.tg==0||r.mail==0;String state=failedRow?"! Ошибка":pendingRow?"◷ В очереди":done?"✓ Доставлено":"Выключено";
+            String channels=(r.tg!=2?"Telegram":"")+(r.tg!=2&&r.mail!=2?", ":"")+(r.mail!=2?"Email":"");TextView caption=text(state+(channels.isEmpty()?"":" · "+channels),12);caption.setTextColor(done?UiColors.SUCCESS:UiColors.MUTED);caption.setMaxLines(2);caption.setEllipsize(TextUtils.TruncateAt.END);words.addView(caption);
+            TextView time=text(android.text.format.DateFormat.format("HH:mm\ndd.MM",r.created).toString(),11);time.setTypeface(Typeface.MONOSPACE);time.setGravity(Gravity.END);time.setTextColor(UiColors.MUTED);card.addView(time);
             card.setFocusable(true);card.setContentDescription(r.kind+", Telegram "+QueueDb.label(r.tg)+", Email "+QueueDb.label(r.mail)+". Открыть подробности");card.setOnClickListener(v->details(r));
         }
-        if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
+        if(shown>limit){Button more=new Button(activity);more.setText("Показать ещё 50");more.setAllCaps(false);more.setTextColor(UiColors.MUTED);more.setBackgroundColor(UiColors.BACKGROUND);more.setOnClickListener(v->{limit+=50;render();});cards.addView(more);}
         if(shown==0)cards.addView(text(rows.isEmpty()?"Здесь появятся новые события после включения пересылки.":"По выбранному фильтру событий нет.",14));
+    }
+    static String displayTitle(QueueDb.HistoryRow r){
+        if(!r.body.startsWith("RelayBridge · "))return r.kind;int start=r.body.indexOf("\n\n");if(start<0)return r.kind;String data=r.body.substring(start+2);
+        if(r.kind.equals("SMS")){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?m)^От: ([^\n]+)").matcher(data);if(m.find())return "SMS от "+m.group(1);}
+        if(r.kind.equals("Уведомление")){String[] lines=data.split("\n",3);if(lines.length>=2){String app=lines[0];int pkg=app.indexOf(" (");if(pkg>0)app=app.substring(0,pkg);return app+" · "+lines[1];}}
+        return r.kind;
     }
     private void details(QueueDb.HistoryRow r){
         TextView content=text(r.body+"\n\nTelegram: "+mark(r.tg)+"\nEmail: "+mark(r.mail)+"\n"+r.error,14);content.setTextIsSelectable(true);content.setPadding(dp(18),dp(8),dp(18),dp(8));

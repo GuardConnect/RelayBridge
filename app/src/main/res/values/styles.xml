@@ -1,16 +1,16 @@
 <resources>
 <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
 <item name="android:fontFamily">sans-serif</item>
-<item name="android:colorAccent">#F4F4F5</item>
+<item name="android:colorAccent">#00A7F5</item>
 <item name="android:windowLightStatusBar">false</item>
-<item name="android:statusBarColor">#0B0B0D</item>
-<item name="android:navigationBarColor">#0B0B0D</item>
+<item name="android:statusBarColor">#000000</item>
+<item name="android:navigationBarColor">#000000</item>
 <item name="android:windowLightNavigationBar">false</item>
-<item name="android:colorBackground">#0B0B0D</item>
-<item name="android:windowBackground">#0B0B0D</item>
-<item name="android:textColorPrimary">#F4F4F5</item>
-<item name="android:textColorSecondary">#ABABB5</item>
-<item name="android:colorControlNormal">#ABABB5</item>
+<item name="android:colorBackground">#000000</item>
+<item name="android:windowBackground">#000000</item>
+<item name="android:textColorPrimary">#FFFFFF</item>
+<item name="android:textColorSecondary">#9B9BA5</item>
+<item name="android:colorControlNormal">#9B9BA5</item>
 <item name="android:windowActionModeOverlay">true</item>
 <item name="android:forceDarkAllowed">false</item>
 </style>
