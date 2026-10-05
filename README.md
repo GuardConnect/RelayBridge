@@ -167,7 +167,7 @@ RelayBridge · SMS
 От: Allan Blank
 Номер: +420XXXXXXXXX
 SIM: Sim 2 ALDImobile
-Test
+Hello my friend!
 ```
 
 | Переменная | Значение |
