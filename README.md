@@ -6,12 +6,12 @@
 
 Бесплатное приложение с открытым исходным кодом: выбирайте события, получателей и формат сообщений.
 
-![Версия](https://img.shields.io/badge/version-2.17-2563eb)
+![Версия](https://img.shields.io/badge/version-2.19-2563eb)
 ![Android](https://img.shields.io/badge/Android-15%2B-3DDC84?logo=android&logoColor=white)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Лицензия](https://img.shields.io/badge/license-Unlicense-blue)
 
-[Возможности](#возможности) · [Настройка](#быстрый-старт) · [Шаблоны](#формат-сообщений) · [Сборка](#сборка-проекта)
+[Возможности](#возможности) · [Скриншоты](#скриншоты) · [Настройка](#быстрый-старт) · [Шаблоны](#формат-сообщений) · [Сборка](#сборка-проекта)
 
 </div>
 
@@ -23,7 +23,7 @@ RelayBridge помогает получать события со своего A
 
 Вы управляете источниками и получателями. Для доставки используются ваш Telegram-бот и ваш SMTP-сервер. Отдельный сервер RelayBridge для пересылки не требуется.
 
-В этом репозитории находится **нативный Java-проект для Android Studio**, версия **2.17**, код версии **34**.
+В этом репозитории находится **нативный Java-проект для Android Studio**, версия **2.19**, код версии **36**.
 
 ## Возможности
 
@@ -118,6 +118,22 @@ flowchart TD
 | **Отправка** | Источники событий, выбор SIM и приложений, Telegram, SMTP и шаблон текста |
 | **Доступ** | Разрешения Android, фоновые ограничения и управление согласием |
 | **Журнал** | История, статусы доставки, ошибки и действия с очередью |
+
+## Скриншоты
+
+Интерфейс RelayBridge **2.19** с демонстрационными данными. Нажмите на скриншот, чтобы открыть его в полном размере.
+
+| Обзор | SMS и звонки | Уведомления приложений |
+| :---: | :---: | :---: |
+| <a href="docs/screenshots/2.19/01-overview.png"><img src="docs/screenshots/2.19/01-overview.png" width="260" alt="Обзор — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/02-sms-calls.png"><img src="docs/screenshots/2.19/02-sms-calls.png" width="260" alt="SMS и звонки — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/03-app-notifications.png"><img src="docs/screenshots/2.19/03-app-notifications.png" width="260" alt="Уведомления приложений — RelayBridge 2.19"></a> |
+
+| Telegram | Email / SMTP | Формат сообщений |
+| :---: | :---: | :---: |
+| <a href="docs/screenshots/2.19/04-telegram.png"><img src="docs/screenshots/2.19/04-telegram.png" width="260" alt="Telegram — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/05-email-smtp.png"><img src="docs/screenshots/2.19/05-email-smtp.png" width="260" alt="Email / SMTP — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/06-message-format.png"><img src="docs/screenshots/2.19/06-message-format.png" width="260" alt="Формат сообщений — RelayBridge 2.19"></a> |
+
+| Разрешения | Системные настройки | Журнал |
+| :---: | :---: | :---: |
+| <a href="docs/screenshots/2.19/07-permissions.png"><img src="docs/screenshots/2.19/07-permissions.png" width="260" alt="Разрешения — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/08-system-settings.png"><img src="docs/screenshots/2.19/08-system-settings.png" width="260" alt="Системные настройки — RelayBridge 2.19"></a> | <a href="docs/screenshots/2.19/09-journal.png"><img src="docs/screenshots/2.19/09-journal.png" width="260" alt="Журнал — RelayBridge 2.19"></a> |
 
 ## Формат сообщений
 
