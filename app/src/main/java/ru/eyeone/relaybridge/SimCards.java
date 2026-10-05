@@ -18,6 +18,25 @@ final class SimCards {
         cards.sort(Comparator.comparingInt((Card card)->card.slot<0?Integer.MAX_VALUE:card.slot).thenComparingInt(card->card.id));return cards;
     }
     static int subscription(Intent intent){int id=intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,-1);return id>=0?id:intent.getIntExtra("subscription",-1);}
+    // Some modem/OEM SMS broadcasts use a Long or supply only a zero-based slot.
+    static int smsSubscription(Context c,Intent intent){
+        for(String key:new String[]{SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,"subscription",android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID}){
+            int id=numberExtra(intent,key);if(id>=0)return id;
+        }
+        List<Card> cards=active(c);
+        for(String key:new String[]{SubscriptionManager.EXTRA_SLOT_INDEX,"slot","phone"}){
+            int slot=numberExtra(intent,key);if(slot<0)continue;
+            int found=-1;for(Card card:cards)if(card.slot==slot){if(found>=0)return -1;found=card.id;}
+            if(found>=0)return found;
+            return -1; // An explicit but unmapped slot must not select a different SIM.
+        }
+        return cards.size()==1?cards.get(0).id:-1;
+    }
+    private static int numberExtra(Intent intent,String key){
+        android.os.Bundle extras=intent.getExtras();Object value=extras==null?null:extras.get(key);
+        if(!(value instanceof Integer)&&!(value instanceof Long))return -1;
+        long number=((Number)value).longValue();return number>=0&&number<=Integer.MAX_VALUE?(int)number:-1;
+    }
     // PHONE_STATE does not guarantee subscription extras on every device.
     static int callSubscription(Context c,Intent intent){
         List<Card> cards=active(c);
