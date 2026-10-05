@@ -1,5 +1,16 @@
 package ru.eyeone.relaybridge;
-import android.content.*;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+
+/** The "stop" action of the status notification. */
 public class PauseReceiver extends BroadcastReceiver {
-    public void onReceive(Context c,Intent i) {try {Indicator.stop(c);} catch(Exception e){Events.fault(c,"Не удалось остановить пересылку");}}
+    @Override public void onReceive(Context context, Intent intent) {
+        try {
+            Indicator.stop(context);
+        } catch (Exception failure) {
+            Events.fault(context, "Не удалось остановить пересылку");
+        }
+    }
 }

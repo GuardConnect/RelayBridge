@@ -1,16 +1,46 @@
 package ru.eyeone.relaybridge;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+/** Small text helpers shared by capture and delivery. */
 final class TextTools {
-    static String hash(String s) {
-        try { byte[] b=MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
-            StringBuilder out=new StringBuilder(); for(byte v:b) out.append(String.format("%02x",v & 255)); return out.toString();
-        } catch(Exception e) { throw new IllegalStateException(e); }
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    private TextTools() { }
+
+    /** Lower-case hexadecimal SHA-256 of the UTF-8 form of {@code value}. */
+    static String hash(String value) {
+        byte[] digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+        char[] out = new char[digest.length * 2];
+        for (int index = 0; index < digest.length; index++) {
+            out[index * 2] = HEX[(digest[index] >> 4) & 0x0F];
+            out[index * 2 + 1] = HEX[digest[index] & 0x0F];
+        }
+        return new String(out);
     }
-    static int chunkEnd(String s, int start, int limit) {
-        int end=Math.min(s.length(), start+limit);
-        if(end<s.length() && end>start && Character.isHighSurrogate(s.charAt(end-1)) && Character.isLowSurrogate(s.charAt(end))) end--;
-        return end;
+
+    /**
+     * End offset of a chunk of at most {@code limit} UTF-16 units starting at {@code start}.
+     * A surrogate pair is never split between two chunks.
+     */
+    static int chunkEnd(String text, int start, int limit) {
+        int end = Math.min(text.length(), start + limit);
+        boolean splitsPair = end < text.length() && end > start
+                && Character.isHighSurrogate(text.charAt(end - 1))
+                && Character.isLowSurrogate(text.charAt(end));
+        return splitsPair ? end - 1 : end;
     }
-    static String cap(String s, int max) { return s.length()<=max?s:s.substring(0,chunkEnd(s,0,max))+"\n[Обрезано]"; }
+
+    /** Shorten {@code text} to {@code max} UTF-16 units and mark that it was cut. */
+    static String cap(String text, int max) {
+        if (text.length() <= max) return text;
+        return text.substring(0, chunkEnd(text, 0, max)) + "\n[Обрезано]";
+    }
 }

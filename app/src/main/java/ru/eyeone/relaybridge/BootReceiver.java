@@ -1,13 +1,18 @@
 package ru.eyeone.relaybridge;
-import android.content.*;
+
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
 import android.service.notification.NotificationListenerService;
+
+/** Resumes waiting deliveries and the notification listener after a reboot. */
 public class BootReceiver extends BroadcastReceiver {
-    public void onReceive(Context c,Intent i) {
-        if(Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) {
-            PendingResult pending=goAsync();CaptureExecutor.run(pending,()->{
-            Events.recover(c);
-            NotificationListenerService.requestRebind(new ComponentName(c,RelayListener.class));
-            });
-        }
+    @Override public void onReceive(Context context, Intent intent) {
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
+        CaptureExecutor.run(goAsync(), () -> {
+            Events.recover(context);
+            NotificationListenerService.requestRebind(new ComponentName(context, RelayListener.class));
+        });
     }
 }

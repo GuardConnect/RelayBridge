@@ -6,7 +6,7 @@
 
 Бесплатное приложение с открытым исходным кодом: выбирайте события, получателей и формат сообщений.
 
-![Версия](https://img.shields.io/badge/version-2.21-2563eb)
+![Версия](https://img.shields.io/badge/version-2.22-2563eb)
 ![Android](https://img.shields.io/badge/Android-15%2B-3DDC84?logo=android&logoColor=white)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Лицензия](https://img.shields.io/badge/license-Unlicense-blue)
@@ -23,7 +23,7 @@ RelayBridge помогает получать события со своего A
 
 Вы управляете источниками и получателями. Для доставки используются ваш Telegram-бот и ваш SMTP-сервер. Отдельный сервер RelayBridge для пересылки не требуется.
 
-В этом репозитории находится **нативный Java-проект для Android Studio**, версия **2.21**, код версии **38**.
+В этом репозитории находится **нативный Java-проект для Android Studio**, версия **2.22**, код версии **39**.
 
 ## Возможности
 
