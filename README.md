@@ -158,6 +158,18 @@ SIM: Sim 2 Megafon
 Номер: +420XXXXXXXXX
 ```
 
+Пример сообщения о SMS:
+
+```text
+RelayBridge · SMS
+2026-10-05 18:08:52 +11:00
+
+От: Allan Blank
+Номер: +420XXXXXXXXX
+SIM: Sim 2 ALDImobile
+Test
+```
+
 | Переменная | Значение |
 | --- | --- |
 | `{{time}}` | Дата и время захвата события с часовым поясом |
