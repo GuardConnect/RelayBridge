@@ -28,8 +28,7 @@ public class CallReceiver extends BroadcastReceiver {
             if(!SimRules.accepts(cfg.callAllSims,cfg.callSubscriptions,subscription))return;
             // Android sends two broadcasts with both permissions; only use the one with the number extra.
             if(c.checkSelfPermission(Manifest.permission.READ_CALL_LOG)==PackageManager.PERMISSION_GRANTED && !i.hasExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)) return;
-            String number=i.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
-            if(number==null || number.isBlank()) number="Скрыт или недоступен";
+            String number=PhoneNumbers.international(c,i.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER),subscription);
             long now=System.currentTimeMillis();
             String fingerprint=TextTools.hash(number);
             if(TelephonyManager.EXTRA_STATE_RINGING.equals(p.getString("call-state-"+sub,"")) && fingerprint.equals(p.getString("call-last-"+sub,""))) return;

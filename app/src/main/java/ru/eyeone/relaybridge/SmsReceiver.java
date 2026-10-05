@@ -13,7 +13,7 @@ public class SmsReceiver extends BroadcastReceiver {
             int subscription=SimCards.subscription(i);if(!SimRules.accepts(cfg.smsAllSims,cfg.smsSubscriptions,subscription))return;
             SmsMessage[] parts=Telephony.Sms.Intents.getMessagesFromIntent(i);if(parts.length==0) return;
             StringBuilder text=new StringBuilder();for(SmsMessage part:parts) text.append(part.getMessageBody());
-            String number=ContactNames.number(parts[0].getOriginatingAddress());String sub=String.valueOf(subscription);
+            String number=PhoneNumbers.international(c,parts[0].getOriginatingAddress(),subscription);String sub=String.valueOf(subscription);
             String key=TextTools.hash("sms|"+sub+"|"+number+"|"+parts[0].getTimestampMillis()+"|"+text);
             String sender=ContactNames.lookup(c,number);String sim=SimCards.label(c,subscription);String data=ContactNames.smsData(sender,number,sim,text.toString());
             Events.capture(c,key,"SMS","SMS от "+sender,text.toString(),data,number,sim,"","",sender,false);
